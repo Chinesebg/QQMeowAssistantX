@@ -1,3 +1,58 @@
 <resources>
     <string name="app_name">QQ喵喵助手</string>
+
+    <!-- 底部 Tab -->
+    <string name="tab_home">主页</string>
+    <string name="tab_settings">设置</string>
+
+    <!-- 主页 -->
+    <string name="home_title">QQ喵喵助手</string>
+    <string name="home_subtitle">控制面板 · 所有规则均可自定义</string>
+    <string name="service_status_enabled">服务状态：已开启</string>
+    <string name="service_status_disabled">服务状态：未开启</string>
+    <string name="btn_open_accessibility">前往开启无障碍服务</string>
+    <string name="btn_accessibility_enabled">服务已开启</string>
+    <string name="section_mode">处理模式</string>
+    <string name="mode_punctuation">标点触发 (推荐)</string>
+    <string name="mode_realtime">实时处理</string>
+    <string name="mode_hint">标点触发：打字时只在标点处立即处理\n实时处理：每输入一个字立即处理（体验可能较快）</string>
+    <string name="section_switch">功能开关</string>
+    <string name="switch_append_title">断句追加</string>
+    <string name="switch_append_desc">在句号、叹号等标点分句后追加文本</string>
+    <string name="switch_emoticon_title">句末颜文字</string>
+    <string name="switch_emoticon_desc">在消息末尾附加随机颜文字</string>
+    <string name="hint_append_text">追加内容（默认：喵）</string>
+    <string name="hint_custom_emoticons">例如: (=^w^=) 等</string>
+    <string name="section_rules">文本替换规则</string>
+    <string name="preset_rules">一键填入预设（我=本喵 / 你=主人）</string>
+    <string name="preset_exists">预设已存在</string>
+    <string name="rule_hint">每行一条，按顺序应用。格式：原词=替换词（也支持 ＝ 全角等号 / →）\n例：我=本喵 / 你＝主人 / 也支持数字等任意文本</string>
+    <string name="section_emoticons">自定义颜文字</string>
+    <string name="emoticon_hint">每行一个颜文字，留空则使用内置库</string>
+    <string name="btn_save">保存设置</string>
+    <string name="btn_test">测试当前配置</string>
+    <string name="home_footer_hint">提示：开关与追加内容即时生效；替换规则和自定义颜文字修改后请点击保存</string>
+    <string name="toast_saved">设置已保存</string>
+    <string name="toast_save_failed">保存失败: </string>
+    <string name="toast_test_failed">测试失败: </string>
+    <string name="toast_cannot_open_settings">无法打开设置</string>
+    <string name="toast_pink_theme">汝将收梢于花开时 一如终结诞下起始</string>
+
+    <!-- 设置 -->
+    <string name="settings_theme_color">主题颜色</string>
+    <string name="settings_dark_mode">深色模式</string>
+    <string name="settings_about">关于</string>
+    <string name="settings_get_updates">获取更新</string>
+    <string name="settings_language">多语言</string>
+    <string name="toast_language_wip">正在制作中qwq</string>
+
+    <!-- 关于 -->
+    <string name="about_devs">DEVS</string>
+    <string name="about_contribs">CONTRIBS</string>
+    <string name="about_original_author_placeholder">原作者请尽快联系</string>
+    <string name="about_contrib_do_not">己所不欲 勿施于人</string>
+    <string name="about_github_repo">https://github.com/Chinesebg/QQMeowAssistantX</string>
+
+    <!-- 获取更新弹窗 -->
+    <string name="updates_github_label">GitHub</string>
 </resources>

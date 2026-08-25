@@ -1,7 +1,14 @@
-# QQ文本改写助手 (QQMiaoAssistant)
+# QQ喵喵助手X (QQMeowAssistantX)
 
 基于 Android **无障碍服务（Accessibility Service）** 的 QQ 文本改写 / 替换工具。
-本项目由一个名为「QQ喵喵助手」的 APK（`base.apk.1`）**逆向拆解并重构**而来的可编译工程。
+本项目由一个名为「QQ喵喵助手」的 APK**逆向拆解并重构**而来的可编译工程。
+## Fork附加声明
+> - **原仓库**：https://github.com/QiCaiJie114514/QQMiaoAssistant
+> - **原作者联系方式**：QQ **1670534177**（上游仓库内公开的联系方式，用于署名/下架等协商）
+> - **本Fork**：致力于把界面改得更好看，并增加更多实用的功能。
+> - **授权**：AGPL-3.0
+> - **承诺**：若原作者认为本仓库侵权，请通过上方联系方式或本仓库 Issues 联系，
+>   将立即下架、署名或按要求整改。
 
 ## ⚠️ 重要声明
 - **本项目原作者未知**，本仓库为逆向重建版本。
@@ -20,16 +27,31 @@
 
 同时修复了原包逆向时反编译产生的编译问题（lambda 外层引用、未初始化变量/死循环等），使源码可正常编译运行。
 
+## UI 更新（Material3 版）
+界面参照 [LibChecker](https://github.com/zhaobozhen/LibChecker) 全面升级为 **Material3 风格**，核心功能保持不变：
+
+- 底部双 Tab：「主页」/「设置」
+  - **主页**：原控制面板（无障碍状态卡片、处理模式、功能开关、替换规则、颜文字、保存/测试），开关为 Material3 `MaterialSwitch`
+  - **设置**：新增「主题颜色」「深色模式」「关于」「获取更新」「多语言」
+- **主题颜色**：4 种统一配色，实时切换 —— 新年红 / 鲸鱼蓝 / 原野绿 / 昔涟粉（#ffd7e4）
+- **深色模式**：跟随系统 / 浅色 / 深色（参照 LibChecker，基于 `AppCompatDelegate` 深浅色资源切换）
+- **底部沉浸**：边到边（edge-to-edge）沉浸式，状态栏 / 底部手势条透明
+- **关于**（二级页）：App 图标 + 版本、DEVS / CONTRIBS 可点击按钮 → 底部弹窗展示圆形头像 + 姓名，点击跳转 GitHub
+- **获取更新**：底部弹窗展示 GitHub，点击跳转 https://github.com/Chinesebg/QQMeowAssistantX
+- **多语言**：敬请期待（正在制作中qwq）
+
 ## 功能
 - 自定义文本替换规则（`原词=替换词`，也支持 `→`，按顺序应用）
+- 文本替换规则预设（一键填入「我=本喵 / 你=主人」）
 - 断句追加（按标点分句，句末追加可自定义文本）
 - 句末随机颜文字（内置 50+ 个，可自定义）
 - 处理模式：标点触发 / 实时处理
 - 基于无障碍服务，仅作用于 QQ 输入框
+- Material3 风格界面（主页 / 设置双 Tab；4 种主题色、深浅色模式切换、底部沉浸式、Android 12+ 原生背景模糊 RenderEffect）
 
 ## 技术栈
-- 纯 Android 原生 API（无第三方依赖）
 - Java
+- AndroidX AppCompat + **Material Components（Material3）**
 - Gradle 8.8 / AGP 8.4.2
 - minSdk 23 / compileSdk 34
 

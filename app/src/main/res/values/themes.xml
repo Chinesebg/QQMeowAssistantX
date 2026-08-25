@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 默认主题 = 新年红（浅色），承载红系完整色板 -->
+    <style name="Theme.QQMeow" parent="Theme.Material3.Light.NoActionBar">
+        <item name="colorPrimary">#B3261E</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorPrimaryContainer">#F9DEDC</item>
+        <item name="colorOnPrimaryContainer">#410E0B</item>
+        <item name="colorSecondary">#775652</item>
+        <item name="colorOnSecondary">#FFFFFF</item>
+        <item name="colorSecondaryContainer">#FFDAD6</item>
+        <item name="colorOnSecondaryContainer">#2C1512</item>
+        <item name="colorSurface">#FFF8F6</item>
+        <item name="colorOnSurface">#201A17</item>
+        <item name="colorSurfaceVariant">#F3DED4</item>
+        <item name="colorOnSurfaceVariant">#52443C</item>
+        <item name="colorOutline">#85736A</item>
+        <item name="colorOutlineVariant">#D7C2B8</item>
+        <item name="android:colorBackground">#FFF8F6</item>
+        <item name="colorOnBackground">#201A17</item>
+        <item name="colorError">#BA1A1A</item>
+        <item name="colorOnError">#FFFFFF</item>
+        <item name="android:statusBarColor">#FFF8F6</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowBackground">#FFF8F6</item>
+    </style>
+
+    <!-- 新年红 -->
+    <style name="Theme.QQMeow.Red" parent="Theme.QQMeow" />
+
+    <!-- 鲸鱼蓝 -->
+    <style name="Theme.QQMeow.Blue" parent="Theme.QQMeow">
+        <item name="colorPrimary">#0061A4</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorPrimaryContainer">#D1E4FF</item>
+        <item name="colorOnPrimaryContainer">#001D36</item>
+        <item name="colorSecondary">#535F70</item>
+        <item name="colorOnSecondary">#FFFFFF</item>
+        <item name="colorSecondaryContainer">#D6E3F7</item>
+        <item name="colorOnSecondaryContainer">#101C2B</item>
+        <item name="colorSurface">#F8F9FF</item>
+        <item name="colorOnSurface">#191C20</item>
+        <item name="colorSurfaceVariant">#DFE2EB</item>
+        <item name="colorOnSurfaceVariant">#43474E</item>
+        <item name="colorOutline">#73777F</item>
+        <item name="colorOutlineVariant">#C3C6CF</item>
+        <item name="android:colorBackground">#F8F9FF</item>
+        <item name="colorOnBackground">#191C20</item>
+        <item name="android:statusBarColor">#F8F9FF</item>
+        <item name="android:windowBackground">#F8F9FF</item>
+    </style>
+
+    <!-- 原野绿 -->
+    <style name="Theme.QQMeow.Green" parent="Theme.QQMeow">
+        <item name="colorPrimary">#386A20</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorPrimaryContainer">#B4F2A0</item>
+        <item name="colorOnPrimaryContainer">#102000</item>
+        <item name="colorSecondary">#52634F</item>
+        <item name="colorOnSecondary">#FFFFFF</item>
+        <item name="colorSecondaryContainer">#D5E8D0</item>
+        <item name="colorOnSecondaryContainer">#101F10</item>
+        <item name="colorSurface">#F7FBF1</item>
+        <item name="colorOnSurface">#191D17</item>
+        <item name="colorSurfaceVariant">#DFE4D8</item>
+        <item name="colorOnSurfaceVariant">#44483F</item>
+        <item name="colorOutline">#74796E</item>
+        <item name="colorOutlineVariant">#C4C9BB</item>
+        <item name="android:colorBackground">#F7FBF1</item>
+        <item name="colorOnBackground">#191D17</item>
+        <item name="android:statusBarColor">#F7FBF1</item>
+        <item name="android:windowBackground">#F7FBF1</item>
+    </style>
+
+    <!-- 昔涟粉 -->
+    <style name="Theme.QQMeow.Pink" parent="Theme.QQMeow">
+        <item name="colorPrimary">#FFD7E4</item>
+        <item name="colorOnPrimary">#3F001B</item>
+        <item name="colorPrimaryContainer">#FFD7E4</item>
+        <item name="colorOnPrimaryContainer">#3F001B</item>
+        <item name="colorSecondary">#74565F</item>
+        <item name="colorOnSecondary">#FFFFFF</item>
+        <item name="colorSecondaryContainer">#FFD9E2</item>
+        <item name="colorOnSecondaryContainer">#2B151C</item>
+        <item name="colorSurface">#FFF8FA</item>
+        <item name="colorOnSurface">#201A1C</item>
+        <item name="colorSurfaceVariant">#F2DDE4</item>
+        <item name="colorOnSurfaceVariant">#524348</item>
+        <item name="colorOutline">#857377</item>
+        <item name="colorOutlineVariant">#D8C1C8</item>
+        <item name="android:colorBackground">#FFF8FA</item>
+        <item name="colorOnBackground">#201A1C</item>
+        <item name="android:statusBarColor">#FFF8FA</item>
+        <item name="android:windowBackground">#FFF8FA</item>
+    </style>
+</resources>
