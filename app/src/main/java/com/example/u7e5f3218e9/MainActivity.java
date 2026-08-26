@@ -4,7 +4,11 @@ import android.accessibilityservice.AccessibilityServiceInfo;
 import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.content.res.Configuration;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.graphics.ColorMatrix;
+import android.graphics.ColorMatrixColorFilter;
 import android.graphics.RenderEffect;
 import android.graphics.Shader;
 import android.graphics.drawable.GradientDrawable;
@@ -22,12 +26,14 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
+import androidx.core.graphics.ColorUtils;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
@@ -44,23 +50,43 @@ import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
+    private static final int REQUEST_CODE_BG = 1001;
+
     private CatConfig config;
     private MaterialSwitch rbPunctuation;
     private MaterialSwitch rbRealtime;
-    private MaterialSwitch cbAppend;
-    private MaterialSwitch cbEmoticon;
-    private TextInputEditText etAppendText;
-    private TextInputEditText etCustomEmoticons;
+    private MaterialSwitch rbEngineRule;
+    private MaterialSwitch rbEngineHybrid;
+    private MaterialSwitch rbEngineAi;
     private TextInputEditText etRules;
     private TextView statusText;
     private MaterialButton toggleButton;
     private View homeView;
     private View settingsView;
+
+    // 态度 / 强度
+    private String selectedAttitude;
+    private String selectedIntensity;
+    private TextView attitudeValue;
+    private TextView intensityValue;
+
+    // 背景
+    private BackgroundConfig bgConfig;
+    private ImageView bgImage;
+
+    // 多语言彩蛋
+    private int languageTapCount = 0;
+    private long lastLanguageTap = 0;
+
+    private interface SliderListener {
+        void onChanged(int value);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -71,15 +97,30 @@ public class MainActivity extends AppCompatActivity {
         } catch (Exception e) {
             this.config = new CatConfig();
         }
+        this.selectedAttitude = this.config.attitude != null ? this.config.attitude : CatConfig.DEFAULT_ATTITUDE;
+        this.selectedIntensity = this.config.intensity != null ? this.config.intensity : CatConfig.DEFAULT_INTENSITY;
+        try {
+            this.bgConfig = BackgroundConfig.load(this);
+        } catch (Exception e) {
+            this.bgConfig = new BackgroundConfig();
+        }
         setupEdgeToEdge();
         setContentView(buildRoot());
+        applyBackground();
     }
 
     // ---------------------------------------------------------------- 布局
 
     private View buildRoot() {
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
+        FrameLayout root = new FrameLayout(this);
+
+        // 背景图片层
+        this.bgImage = new ImageView(this);
+        this.bgImage.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        root.addView(this.bgImage, new FrameLayout.LayoutParams(-1, -1));
+
+        LinearLayout main = new LinearLayout(this);
+        main.setOrientation(LinearLayout.VERTICAL);
 
         FrameLayout content = new FrameLayout(this);
         this.homeView = buildHomeView();
@@ -108,8 +149,10 @@ public class MainActivity extends AppCompatActivity {
         });
         nav.setSelectedItemId(R.id.navigation_home);
 
-        root.addView(content, new LinearLayout.LayoutParams(-1, 0, 1.0f));
-        root.addView(nav, new LinearLayout.LayoutParams(-1, -2));
+        main.addView(content, new LinearLayout.LayoutParams(-1, 0, 1.0f));
+        main.addView(nav, new LinearLayout.LayoutParams(-1, -2));
+
+        root.addView(main, new FrameLayout.LayoutParams(-1, -1));
 
         // 沉浸式：内容避开状态栏；底部手势条由 BottomNavigationView 自动避让
         ViewCompat.setOnApplyWindowInsetsListener(content, (v, insets) -> {
@@ -218,32 +261,52 @@ public class MainActivity extends AppCompatActivity {
 
         addHint(root, R.string.mode_hint);
 
-        // 功能开关
-        addSectionTitle(root, R.string.section_switch);
-        this.cbAppend = new MaterialSwitch(this);
-        this.cbAppend.setText(R.string.switch_append_title);
-        this.cbAppend.setChecked(this.config.enableAppend);
-        this.cbAppend.setOnCheckedChangeListener((buttonView, isChecked) -> saveSwitchSettings());
-        root.addView(this.cbAppend, new LinearLayout.LayoutParams(-1, -2));
-        addSwitchDesc(root, R.string.switch_append_desc);
-
-        this.etAppendText = new TextInputEditText(this);
-        this.etAppendText.setInputType(InputType.TYPE_CLASS_TEXT);
-        this.etAppendText.setText(this.config.appendText != null ? this.config.appendText : "喵");
-        this.etAppendText.setOnFocusChangeListener((v, hasFocus) -> {
-            if (!hasFocus) {
-                saveSwitchSettings();
+        // 处理引擎（规则 / 混合 / AI，参照 nyabox）
+        addSectionTitle(root, R.string.section_engine);
+        this.rbEngineRule = new MaterialSwitch(this);
+        this.rbEngineRule.setText(R.string.engine_rule);
+        this.rbEngineRule.setChecked(CatConfig.MODE_ENGINE_RULE.equals(this.config.engineMode));
+        this.rbEngineRule.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isChecked) {
+                rbEngineHybrid.setChecked(false);
+                rbEngineAi.setChecked(false);
             }
+            saveSwitchSettings();
         });
-        root.addView(wrapTextInput(this.etAppendText, getString(R.string.hint_append_text)),
-                new LinearLayout.LayoutParams(-1, -2));
+        root.addView(this.rbEngineRule, new LinearLayout.LayoutParams(-1, -2));
 
-        this.cbEmoticon = new MaterialSwitch(this);
-        this.cbEmoticon.setText(R.string.switch_emoticon_title);
-        this.cbEmoticon.setChecked(this.config.enableRandomEmoticon);
-        this.cbEmoticon.setOnCheckedChangeListener((buttonView, isChecked) -> saveSwitchSettings());
-        root.addView(this.cbEmoticon, new LinearLayout.LayoutParams(-1, -2));
-        addSwitchDesc(root, R.string.switch_emoticon_desc);
+        this.rbEngineHybrid = new MaterialSwitch(this);
+        this.rbEngineHybrid.setText(R.string.engine_hybrid);
+        this.rbEngineHybrid.setChecked(CatConfig.MODE_ENGINE_HYBRID.equals(this.config.engineMode));
+        this.rbEngineHybrid.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isChecked) {
+                rbEngineRule.setChecked(false);
+                rbEngineAi.setChecked(false);
+            }
+            saveSwitchSettings();
+        });
+        root.addView(this.rbEngineHybrid, new LinearLayout.LayoutParams(-1, -2));
+
+        this.rbEngineAi = new MaterialSwitch(this);
+        this.rbEngineAi.setText(R.string.engine_ai);
+        this.rbEngineAi.setChecked(CatConfig.MODE_ENGINE_AI.equals(this.config.engineMode));
+        this.rbEngineAi.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isChecked) {
+                rbEngineRule.setChecked(false);
+                rbEngineHybrid.setChecked(false);
+            }
+            saveSwitchSettings();
+        });
+        root.addView(this.rbEngineAi, new LinearLayout.LayoutParams(-1, -2));
+        addHint(root, R.string.engine_hint);
+
+        // 语气（态度 × 强度，参照 nyabox）
+        addSectionTitle(root, R.string.section_tone);
+        this.attitudeValue = addValueRow(root, getString(R.string.label_attitude),
+                attitudeName(this.selectedAttitude), v -> showAttitudeDialog());
+        this.intensityValue = addValueRow(root, getString(R.string.label_intensity),
+                intensityName(this.selectedIntensity), v -> showIntensityDialog());
+        addHint(root, R.string.tone_hint);
 
         // 文本替换规则
         addSectionTitle(root, R.string.section_rules);
@@ -269,17 +332,6 @@ public class MainActivity extends AppCompatActivity {
         this.etRules.setGravity(Gravity.TOP | Gravity.START);
         this.etRules.setText(CatConfig.rulesToString(this.config.rules));
         root.addView(wrapTextInput(this.etRules, null), new LinearLayout.LayoutParams(-1, -2));
-
-        // 自定义颜文字
-        addSectionTitle(root, R.string.section_emoticons);
-        addHint(root, R.string.emoticon_hint);
-        this.etCustomEmoticons = new TextInputEditText(this);
-        this.etCustomEmoticons.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
-        this.etCustomEmoticons.setMinLines(4);
-        this.etCustomEmoticons.setGravity(Gravity.TOP | Gravity.START);
-        this.etCustomEmoticons.setText(joinLines(this.config.customEmoticons));
-        root.addView(wrapTextInput(this.etCustomEmoticons, getString(R.string.hint_custom_emoticons)),
-                new LinearLayout.LayoutParams(-1, -2));
 
         // 保存 / 测试
         MaterialButton saveBtn = new MaterialButton(this);
@@ -315,6 +367,8 @@ public class MainActivity extends AppCompatActivity {
         card.setCardElevation(0);
         card.setStrokeWidth(1);
         card.setStrokeColor(colorAttr(com.google.android.material.R.attr.colorOutlineVariant));
+        card.setCardBackgroundColor(ColorUtils.setAlphaComponent(
+                colorAttr(com.google.android.material.R.attr.colorSurface), 0xD9));
         LinearLayout cardContent = new LinearLayout(this);
         cardContent.setOrientation(LinearLayout.VERTICAL);
 
@@ -324,6 +378,9 @@ public class MainActivity extends AppCompatActivity {
         cardContent.addView(makeSettingsRow(R.drawable.ic_dark_mode, getString(R.string.settings_dark_mode), false,
                 v -> showDarkModeDialog()));
         cardContent.addView(listDivider());
+        cardContent.addView(makeSettingsRow(R.drawable.ic_ai, getString(R.string.settings_ai), false,
+                v -> showAiSettingsDialog()));
+        cardContent.addView(listDivider());
         cardContent.addView(makeSettingsRow(R.drawable.ic_info, getString(R.string.settings_about), true,
                 v -> startActivity(new Intent(MainActivity.this, AboutActivity.class))));
         cardContent.addView(listDivider());
@@ -331,12 +388,54 @@ public class MainActivity extends AppCompatActivity {
                 v -> showGetUpdatesSheet()));
         cardContent.addView(listDivider());
         cardContent.addView(makeSettingsRow(R.drawable.ic_language, getString(R.string.settings_language), false,
-                v -> Toast.makeText(MainActivity.this, R.string.toast_language_wip, Toast.LENGTH_SHORT).show()));
+                v -> onLanguageTap()));
 
         card.addView(cardContent, new LinearLayout.LayoutParams(-1, -2));
         root.addView(card, new LinearLayout.LayoutParams(-1, -2));
+
+        LinearLayout.LayoutParams bgLp = new LinearLayout.LayoutParams(-1, -2);
+        bgLp.setMargins(0, dp(16), 0, 0);
+        root.addView(buildBackgroundCard(), bgLp);
+
         scroll.addView(root, new LinearLayout.LayoutParams(-1, -2));
         return scroll;
+    }
+
+    private View buildBackgroundCard() {
+        MaterialCardView card = new MaterialCardView(this);
+        card.setCardElevation(0);
+        card.setStrokeWidth(1);
+        card.setStrokeColor(colorAttr(com.google.android.material.R.attr.colorOutlineVariant));
+        card.setRadius(dp(16));
+        card.setCardBackgroundColor(ColorUtils.setAlphaComponent(
+                colorAttr(com.google.android.material.R.attr.colorSurface), 0xD9));
+
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+
+        content.addView(makeSettingsRow(R.drawable.ic_image, getString(R.string.settings_bg_image), false,
+                v -> openImagePicker()));
+        content.addView(listDivider());
+        content.addView(makeSettingsRow(R.drawable.ic_clear, getString(R.string.settings_bg_clear), false,
+                v -> clearBackground()));
+        content.addView(listDivider());
+        content.addView(makeSliderRow(R.string.settings_bg_blur, this.bgConfig.blur, 0, BackgroundConfig.MAX_BLUR,
+                v -> {
+                    bgConfig.blur = v;
+                    bgConfig.save(MainActivity.this);
+                    applyBlur();
+                }));
+        content.addView(listDivider());
+        content.addView(makeSliderRow(R.string.settings_bg_dim, this.bgConfig.brightness,
+                BackgroundConfig.MIN_BRIGHTNESS, BackgroundConfig.MAX_BRIGHTNESS,
+                v -> {
+                    bgConfig.brightness = v;
+                    bgConfig.save(MainActivity.this);
+                    applyBrightness();
+                }));
+
+        card.addView(content, new LinearLayout.LayoutParams(-1, -2));
+        return card;
     }
 
     // ---------------------------------------------------------------- 小组件
@@ -361,17 +460,6 @@ public class MainActivity extends AppCompatActivity {
         parent.addView(tv, lp);
     }
 
-    private void addSwitchDesc(LinearLayout parent, int textRes) {
-        TextView tv = new TextView(this);
-        tv.setText(textRes);
-        TextViewCompat.setTextAppearance(tv, com.google.android.material.R.style.TextAppearance_Material3_BodySmall);
-        tv.setTextColor(colorAttr(com.google.android.material.R.attr.colorOnSurfaceVariant));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
-        lp.setMarginStart(dp(52));
-        lp.setMargins(dp(52), 0, 0, dp(4));
-        parent.addView(tv, lp);
-    }
-
     private void addFooterHint(LinearLayout parent, int textRes) {
         TextView tv = new TextView(this);
         tv.setText(textRes);
@@ -381,6 +469,34 @@ public class MainActivity extends AppCompatActivity {
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
         lp.setMargins(0, dp(28), 0, 0);
         parent.addView(tv, lp);
+    }
+
+    private TextView addValueRow(LinearLayout parent, String title, String value, View.OnClickListener onClick) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(16), dp(14), dp(16), dp(14));
+        row.setClickable(true);
+        row.setFocusable(true);
+        TypedValue bg = new TypedValue();
+        getTheme().resolveAttribute(android.R.attr.selectableItemBackground, bg, true);
+        row.setBackgroundResource(bg.resourceId);
+        row.setOnClickListener(onClick);
+
+        TextView titleTv = new TextView(this);
+        titleTv.setText(title);
+        TextViewCompat.setTextAppearance(titleTv, com.google.android.material.R.style.TextAppearance_Material3_BodyLarge);
+        titleTv.setTextColor(colorAttr(com.google.android.material.R.attr.colorOnSurface));
+        row.addView(titleTv, new LinearLayout.LayoutParams(0, -2, 1.0f));
+
+        TextView valueTv = new TextView(this);
+        valueTv.setText(value);
+        TextViewCompat.setTextAppearance(valueTv, com.google.android.material.R.style.TextAppearance_Material3_BodyLarge);
+        valueTv.setTextColor(colorAttr(com.google.android.material.R.attr.colorPrimary));
+        row.addView(valueTv, new LinearLayout.LayoutParams(-2, -2));
+
+        parent.addView(row, new LinearLayout.LayoutParams(-1, -2));
+        return valueTv;
     }
 
     private TextInputLayout wrapTextInput(TextInputEditText edit, String hint) {
@@ -427,6 +543,54 @@ public class MainActivity extends AppCompatActivity {
         return row;
     }
 
+    private View makeSliderRow(int titleRes, int value, int min, int max, final SliderListener listener) {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(16), dp(12), dp(16), dp(12));
+
+        LinearLayout header = new LinearLayout(this);
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView title = new TextView(this);
+        title.setText(titleRes);
+        TextViewCompat.setTextAppearance(title, com.google.android.material.R.style.TextAppearance_Material3_BodyLarge);
+        title.setTextColor(colorAttr(com.google.android.material.R.attr.colorOnSurface));
+        header.addView(title, new LinearLayout.LayoutParams(0, -2, 1.0f));
+
+        final TextView valueTv = new TextView(this);
+        valueTv.setText(String.valueOf(value));
+        TextViewCompat.setTextAppearance(valueTv, com.google.android.material.R.style.TextAppearance_Material3_BodyLarge);
+        valueTv.setTextColor(colorAttr(com.google.android.material.R.attr.colorPrimary));
+        header.addView(valueTv, new LinearLayout.LayoutParams(-2, -2));
+
+        box.addView(header, new LinearLayout.LayoutParams(-1, -2));
+
+        SeekBar seek = new SeekBar(this);
+        seek.setMax(max - min);
+        seek.setProgress(value - min);
+        seek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar sb, int progress, boolean fromUser) {
+                int actual = progress + min;
+                valueTv.setText(String.valueOf(actual));
+                if (fromUser) {
+                    listener.onChanged(actual);
+                }
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar sb) {
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar sb) {
+            }
+        });
+        box.addView(seek, new LinearLayout.LayoutParams(-1, -2));
+        return box;
+    }
+
     private View listDivider() {
         View v = new View(this);
         v.setBackgroundColor(colorAttr(com.google.android.material.R.attr.colorOutlineVariant));
@@ -434,6 +598,123 @@ public class MainActivity extends AppCompatActivity {
         lp.setMarginStart(dp(56));
         v.setLayoutParams(lp);
         return v;
+    }
+
+    // ---------------------------------------------------------------- 背景
+
+    private void applyBackground() {
+        if (this.bgImage == null) {
+            return;
+        }
+        if (this.bgConfig.uri != null && !this.bgConfig.uri.isEmpty()) {
+            Bitmap bmp = decodeSampledBitmap(Uri.parse(this.bgConfig.uri));
+            this.bgImage.setImageBitmap(bmp);
+            this.bgImage.setVisibility(View.VISIBLE);
+        } else {
+            this.bgImage.setImageBitmap(null);
+            this.bgImage.setVisibility(View.GONE);
+        }
+        applyBlur();
+        applyBrightness();
+    }
+
+    private void applyBlur() {
+        if (this.bgImage == null) {
+            return;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && this.bgConfig.blur > 0) {
+            this.bgImage.setRenderEffect(RenderEffect.createBlurEffect(
+                    dp(this.bgConfig.blur), dp(this.bgConfig.blur), Shader.TileMode.CLAMP));
+        } else {
+            this.bgImage.setRenderEffect(null);
+        }
+    }
+
+    private void applyBrightness() {
+        if (this.bgImage == null) {
+            return;
+        }
+        int b = this.bgConfig.brightness;
+        if (b == 0) {
+            this.bgImage.clearColorFilter();
+            return;
+        }
+        float offset = b * 255f / BackgroundConfig.MAX_BRIGHTNESS;
+        float[] mat = new float[]{
+                1, 0, 0, 0, offset,
+                0, 1, 0, 0, offset,
+                0, 0, 1, 0, offset,
+                0, 0, 0, 1, 0
+        };
+        this.bgImage.setColorFilter(new ColorMatrixColorFilter(new ColorMatrix(mat)));
+    }
+
+    private Bitmap decodeSampledBitmap(Uri uri) {
+        try {
+            BitmapFactory.Options bounds = new BitmapFactory.Options();
+            bounds.inJustDecodeBounds = true;
+            InputStream is = getContentResolver().openInputStream(uri);
+            if (is == null) {
+                return null;
+            }
+            BitmapFactory.decodeStream(is, null, bounds);
+            is.close();
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) {
+                return null;
+            }
+
+            int reqW = Math.max(1, getResources().getDisplayMetrics().widthPixels);
+            int reqH = Math.max(1, getResources().getDisplayMetrics().heightPixels);
+            int sample = 1;
+            while (bounds.outWidth / (sample * 2) >= reqW && bounds.outHeight / (sample * 2) >= reqH) {
+                sample *= 2;
+            }
+
+            BitmapFactory.Options opts = new BitmapFactory.Options();
+            opts.inSampleSize = sample;
+            InputStream is2 = getContentResolver().openInputStream(uri);
+            if (is2 == null) {
+                return null;
+            }
+            Bitmap bmp = BitmapFactory.decodeStream(is2, null, opts);
+            is2.close();
+            return bmp;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private void openImagePicker() {
+        try {
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.setType("image/*");
+            startActivityForResult(intent, REQUEST_CODE_BG);
+        } catch (Exception e) {
+            Toast.makeText(this, R.string.toast_cannot_open_settings, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void clearBackground() {
+        this.bgConfig.uri = "";
+        this.bgConfig.save(this);
+        applyBackground();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_CODE_BG && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            Uri uri = data.getData();
+            try {
+                getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            } catch (Exception ignored) {
+            }
+            this.bgConfig.uri = uri.toString();
+            this.bgConfig.save(this);
+            applyBackground();
+            Toast.makeText(this, R.string.toast_saved, Toast.LENGTH_SHORT).show();
+        }
     }
 
     // ---------------------------------------------------------------- 主题与沉浸式
@@ -454,6 +735,25 @@ public class MainActivity extends AppCompatActivity {
         return mode == Configuration.UI_MODE_NIGHT_YES;
     }
 
+    /** Android 12+ 原生背景模糊：模糊宿主内容（弹窗背后的整屏内容），参照 LibChecker。 */
+    private void applyHostBlur(boolean on) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            return;
+        }
+        View content = findViewById(android.R.id.content);
+        if (content != null) {
+            content.setRenderEffect(on
+                    ? RenderEffect.createBlurEffect(dp(24), dp(24), Shader.TileMode.CLAMP)
+                    : null);
+        }
+    }
+
+    private void showWithBlur(android.app.Dialog dialog) {
+        dialog.setOnDismissListener(d -> applyHostBlur(false));
+        applyHostBlur(true);
+        dialog.show();
+    }
+
     private void showThemeDialog() {
         int checked = ThemeManager.colorIndexOf(this);
         androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(this)
@@ -469,7 +769,7 @@ public class MainActivity extends AppCompatActivity {
                 })
                 .setNegativeButton(android.R.string.cancel, null)
                 .create();
-        dialog.show();
+        showWithBlur(dialog);
     }
 
     private void showDarkModeDialog() {
@@ -484,7 +784,100 @@ public class MainActivity extends AppCompatActivity {
                 })
                 .setNegativeButton(android.R.string.cancel, null)
                 .create();
-        dialog.show();
+        showWithBlur(dialog);
+    }
+
+    private void showAttitudeDialog() {
+        int checked = RuleEngine.attitudeIndexOf(this.selectedAttitude);
+        androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.label_attitude)
+                .setSingleChoiceItems(RuleEngine.ATTITUDE_NAMES, checked, (d, which) -> {
+                    this.selectedAttitude = RuleEngine.ATTITUDES[which];
+                    this.attitudeValue.setText(RuleEngine.ATTITUDE_NAMES[which]);
+                    saveSwitchSettings();
+                    d.dismiss();
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .create();
+        showWithBlur(dialog);
+    }
+
+    private void showIntensityDialog() {
+        int checked = RuleEngine.intensityIndexOf(this.selectedIntensity);
+        androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.label_intensity)
+                .setSingleChoiceItems(RuleEngine.INTENSITY_NAMES, checked, (d, which) -> {
+                    this.selectedIntensity = RuleEngine.INTENSITIES[which];
+                    this.intensityValue.setText(RuleEngine.INTENSITY_NAMES[which]);
+                    saveSwitchSettings();
+                    d.dismiss();
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .create();
+        showWithBlur(dialog);
+    }
+
+    private void showAiSettingsDialog() {
+        AiConfig ai = AiConfig.load(this);
+
+        LinearLayout container = new LinearLayout(this);
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setPadding(dp(24), dp(16), dp(24), 0);
+
+        TextInputLayout tilBase = new TextInputLayout(this);
+        tilBase.setHint(getString(R.string.ai_base_url));
+        TextInputEditText etBase = new TextInputEditText(this);
+        etBase.setText(ai.baseUrl);
+        etBase.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
+        tilBase.addView(etBase, new LinearLayout.LayoutParams(-1, -2));
+        container.addView(tilBase, new LinearLayout.LayoutParams(-1, -2));
+
+        TextInputLayout tilKey = new TextInputLayout(this);
+        tilKey.setHint(getString(R.string.ai_api_key));
+        TextInputEditText etKey = new TextInputEditText(this);
+        etKey.setText(ai.apiKey);
+        etKey.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        tilKey.addView(etKey, new LinearLayout.LayoutParams(-1, -2));
+        container.addView(tilKey, new LinearLayout.LayoutParams(-1, -2));
+
+        TextInputLayout tilModel = new TextInputLayout(this);
+        tilModel.setHint(getString(R.string.ai_model));
+        TextInputEditText etModel = new TextInputEditText(this);
+        etModel.setText(ai.model);
+        etModel.setInputType(InputType.TYPE_CLASS_TEXT);
+        tilModel.addView(etModel, new LinearLayout.LayoutParams(-1, -2));
+        container.addView(tilModel, new LinearLayout.LayoutParams(-1, -2));
+
+        TextInputLayout tilTemp = new TextInputLayout(this);
+        tilTemp.setHint(getString(R.string.ai_temperature));
+        TextInputEditText etTemp = new TextInputEditText(this);
+        etTemp.setText(String.valueOf(ai.temperature));
+        etTemp.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        tilTemp.addView(etTemp, new LinearLayout.LayoutParams(-1, -2));
+        container.addView(tilTemp, new LinearLayout.LayoutParams(-1, -2));
+
+        androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.settings_ai)
+                .setView(container)
+                .setPositiveButton(android.R.string.ok, (d, which) -> {
+                    AiConfig c = new AiConfig();
+                    c.baseUrl = etBase.getText().toString().trim();
+                    c.apiKey = etKey.getText().toString().trim();
+                    c.model = etModel.getText().toString().trim();
+                    String t = etTemp.getText().toString().trim();
+                    try {
+                        c.temperature = Float.parseFloat(t);
+                    } catch (Exception e) {
+                        c.temperature = 0.8f;
+                    }
+                    if (c.baseUrl.isEmpty()) c.baseUrl = AiConfig.DEFAULT_BASE_URL;
+                    if (c.model.isEmpty()) c.model = AiConfig.DEFAULT_MODEL;
+                    c.save(this);
+                    Toast.makeText(this, R.string.toast_saved, Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .create();
+        showWithBlur(dialog);
     }
 
     // ---------------------------------------------------------------- 获取更新弹窗
@@ -536,7 +929,7 @@ public class MainActivity extends AppCompatActivity {
 
         content.addView(row, new LinearLayout.LayoutParams(-1, -2));
         dialog.setContentView(content);
-        dialog.show();
+        showWithBlur(dialog);
     }
 
     private void openUrl(String url) {
@@ -545,6 +938,22 @@ public class MainActivity extends AppCompatActivity {
         } catch (Exception e) {
             Toast.makeText(this, R.string.toast_cannot_open_settings, Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private void onLanguageTap() {
+        long now = System.currentTimeMillis();
+        if (now - this.lastLanguageTap > 1500) {
+            this.languageTapCount = 0;
+        }
+        this.lastLanguageTap = now;
+        this.languageTapCount++;
+        if (this.languageTapCount >= 7) {
+            this.languageTapCount = 0;
+            this.lastLanguageTap = 0;
+            startActivity(new Intent(MainActivity.this, CatGirlActivity.class));
+            return;
+        }
+        Toast.makeText(this, R.string.toast_language_wip, Toast.LENGTH_SHORT).show();
     }
 
     // ---------------------------------------------------------------- 原功能逻辑（保持不变）
@@ -640,36 +1049,24 @@ public class MainActivity extends AppCompatActivity {
         return false;
     }
 
-    private String joinLines(String[] arr) {
-        if (arr == null) {
-            return "";
-        }
-        StringBuilder sb = new StringBuilder();
-        for (String s : arr) {
-            if (s == null) {
-                continue;
-            }
-            String t = s.trim();
-            if (t.isEmpty()) {
-                continue;
-            }
-            if (sb.length() > 0) {
-                sb.append("\n");
-            }
-            sb.append(t);
-        }
-        return sb.toString();
+    private String attitudeName(String attitude) {
+        return RuleEngine.ATTITUDE_NAMES[RuleEngine.attitudeIndexOf(attitude)];
+    }
+
+    private String intensityName(String intensity) {
+        return RuleEngine.INTENSITY_NAMES[RuleEngine.intensityIndexOf(intensity)];
     }
 
     /** 从当前界面读取配置（不落盘）。 */
     private CatConfig buildConfigFromUi() {
         CatConfig c = new CatConfig();
-        c.enableAppend = this.cbAppend.isChecked();
-        String append = this.etAppendText.getText() == null ? "" : this.etAppendText.getText().toString().trim();
-        c.appendText = append.isEmpty() ? "喵" : append;
-        c.enableRandomEmoticon = this.cbEmoticon.isChecked();
         c.processingMode = this.rbRealtime.isChecked()
                 ? CatConfig.MODE_REALTIME : CatConfig.MODE_PUNCTUATION;
+        c.engineMode = this.rbEngineHybrid.isChecked() ? CatConfig.MODE_ENGINE_HYBRID
+                : this.rbEngineAi.isChecked() ? CatConfig.MODE_ENGINE_AI
+                : CatConfig.MODE_ENGINE_RULE;
+        c.attitude = this.selectedAttitude;
+        c.intensity = this.selectedIntensity;
 
         ArrayList<CatConfig.Rule> rules = new ArrayList<>();
         String rulesText = this.etRules.getText() == null ? "" : this.etRules.getText().toString();
@@ -680,38 +1077,26 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         c.rules = rules;
-
-        ArrayList<String> list = new ArrayList<>();
-        String customText = this.etCustomEmoticons.getText() == null ? ""
-                : this.etCustomEmoticons.getText().toString().trim();
-        if (!customText.isEmpty()) {
-            for (String raw : customText.split("\n")) {
-                String t = raw.trim();
-                if (!t.isEmpty()) {
-                    list.add(t);
-                }
-            }
-        }
-        c.customEmoticons = list.toArray(new String[0]);
         return c;
     }
 
-    /** 开关 / 追加内容即时生效：只保存这些字段，不动替换规则与自定义颜文字。 */
+    /** 开关 / 态度 / 强度即时生效：只保存这些字段，不动替换规则。 */
     private void saveSwitchSettings() {
         try {
-            this.config.enableAppend = this.cbAppend.isChecked();
-            String append = this.etAppendText.getText() == null ? "" : this.etAppendText.getText().toString().trim();
-            this.config.appendText = append.isEmpty() ? "喵" : append;
-            this.config.enableRandomEmoticon = this.cbEmoticon.isChecked();
             this.config.processingMode = this.rbRealtime.isChecked()
                     ? CatConfig.MODE_REALTIME : CatConfig.MODE_PUNCTUATION;
+            this.config.engineMode = this.rbEngineHybrid.isChecked() ? CatConfig.MODE_ENGINE_HYBRID
+                    : this.rbEngineAi.isChecked() ? CatConfig.MODE_ENGINE_AI
+                    : CatConfig.MODE_ENGINE_RULE;
+            this.config.attitude = this.selectedAttitude;
+            this.config.intensity = this.selectedIntensity;
             this.config.save(this);
         } catch (Exception ignored) {
             // 开关交互失败时静默，避免打断操作
         }
     }
 
-    /** 保存按钮：替换规则 + 自定义颜文字（一并保存完整配置）。 */
+    /** 保存按钮：替换规则（一并保存完整配置）。 */
     public void saveConfig() {
         try {
             this.config = buildConfigFromUi();
@@ -723,29 +1108,44 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void showTestDialog() {
-        try {
-            CatConfig testCfg = buildConfigFromUi();
-            String sample = "今天我很好，你准备好了吗？我们去公园玩吧";
-            String processed = TextProcessor.process(sample, testCfg);
-            String msg = "断句追加：" + yn(testCfg.enableAppend) + "（"
-                    + (testCfg.appendText == null ? "" : testCfg.appendText) + "）"
-                    + "\n句末颜文字：" + yn(testCfg.enableRandomEmoticon)
-                    + "\n替换规则：" + testCfg.rules.size() + " 条"
-                    + "\n自定义颜文字：" + (testCfg.customEmoticons.length > 0
-                    ? testCfg.customEmoticons.length + "个" : "使用内置")
-                    + "\n\n原始：\n" + sample
-                    + "\n\n处理后：\n" + processed;
-            androidx.appcompat.app.AlertDialog d = new androidx.appcompat.app.AlertDialog.Builder(this)
-                    .setTitle("预览").setMessage(msg)
-                    .setPositiveButton("好的", null).create();
-            d.show();
-        } catch (Exception e) {
-            Toast.makeText(this, getString(R.string.toast_test_failed) + e.getMessage(), Toast.LENGTH_SHORT).show();
+        final CatConfig testCfg = buildConfigFromUi();
+        final String sample = "今天我很好，你准备好了吗？我们去公园玩吧";
+        String engine = testCfg.engineMode != null ? testCfg.engineMode : CatConfig.MODE_ENGINE_RULE;
+        if (CatConfig.MODE_ENGINE_RULE.equals(engine)) {
+            showTestResult(testCfg,
+                    RuleEngine.convert(sample, testCfg.intensity, testCfg.attitude, testCfg.rules, true), sample);
+            return;
         }
+        // AI / 混合：异步
+        Toast.makeText(this, R.string.ai_processing, Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            AiConfig aiCfg = AiConfig.load(MainActivity.this);
+            String result = Engine.process(sample, testCfg, aiCfg);
+            runOnUiThread(() -> {
+                if (!isFinishing() && !isDestroyed()) {
+                    showTestResult(testCfg, result, sample);
+                }
+            });
+        }).start();
     }
 
-    private String yn(boolean b) {
-        return b ? "开" : "关";
+    private void showTestResult(CatConfig testCfg, String processed, String sample) {
+        String msg = "处理引擎：" + engineLabel(testCfg)
+                + "\n态度：" + attitudeName(testCfg.attitude)
+                + "\n强度：" + intensityName(testCfg.intensity)
+                + "\n替换规则：" + testCfg.rules.size() + " 条"
+                + "\n\n原始：\n" + sample
+                + "\n\n处理后：\n" + processed;
+        androidx.appcompat.app.AlertDialog d = new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("预览").setMessage(msg)
+                .setPositiveButton("好的", null).create();
+        showWithBlur(d);
+    }
+
+    private String engineLabel(CatConfig cfg) {
+        if (CatConfig.MODE_ENGINE_AI.equals(cfg.engineMode)) return "AI";
+        if (CatConfig.MODE_ENGINE_HYBRID.equals(cfg.engineMode)) return "混合";
+        return "规则";
     }
 
     // ---------------------------------------------------------------- 工具

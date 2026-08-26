@@ -74,9 +74,9 @@
 
     <!-- 昔涟粉 -->
     <style name="Theme.QQMeow.Pink" parent="Theme.QQMeow">
-        <item name="colorPrimary">#FFD7E4</item>
-        <item name="colorOnPrimary">#3F001B</item>
-        <item name="colorPrimaryContainer">#FFD7E4</item>
+        <item name="colorPrimary">#A6004D</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorPrimaryContainer">#FFD9E1</item>
         <item name="colorOnPrimaryContainer">#3F001B</item>
         <item name="colorSecondary">#74565F</item>
         <item name="colorOnSecondary">#FFFFFF</item>

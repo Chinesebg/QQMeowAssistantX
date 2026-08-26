@@ -3,6 +3,8 @@ package com.example.u7e5f3218e9;
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.AccessibilityServiceInfo;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
@@ -146,14 +148,14 @@ public class QQAccessibilityService extends AccessibilityService {
         }
         boolean isRealtime = CatConfig.MODE_REALTIME.equals(cfg.processingMode);
         if (!isRealtime && this.lastSet.isEmpty()) {
-            this.userOriginal = stripAll(raw, cfg);
+            this.userOriginal = stripAll(raw);
             Log.d(TAG, "标点首次剥离: " + this.userOriginal);
         } else if (this.lastSet.isEmpty() || !raw.startsWith(this.lastSet)) {
             if (this.lastSet.isEmpty()) {
-                this.userOriginal = stripAll(raw, cfg);
+                this.userOriginal = stripAll(raw);
                 Log.d(TAG, "首条剥离: " + this.userOriginal);
             } else {
-                this.userOriginal = stripAll(raw, cfg);
+                this.userOriginal = stripAll(raw);
                 Log.d(TAG, "不匹配剥离: " + this.userOriginal);
             }
         } else {
@@ -168,11 +170,18 @@ public class QQAccessibilityService extends AccessibilityService {
             this.processing = false;
             return;
         }
-        CatConfig effectiveCfg = cfg;
-        if (isRealtime && cfg.enableRandomEmoticon && !isSendClick) {
-            effectiveCfg = cloneConfigWithoutEmoticon(cfg);
+        String engine = cfg.engineMode != null ? cfg.engineMode : CatConfig.MODE_ENGINE_RULE;
+        if (CatConfig.MODE_ENGINE_AI.equals(engine) || CatConfig.MODE_ENGINE_HYBRID.equals(engine)) {
+            // AI / 混合：后台线程处理，完成后写回
+            final String original = this.userOriginal;
+            final CatConfig fCfg = cfg;
+            inp.recycle();
+            root.recycle();
+            launchEngineRewrite(original, fCfg);
+            return;
         }
-        String target = TextProcessor.process(this.userOriginal, effectiveCfg);
+        boolean withEmoticon = !isRealtime || isSendClick;
+        String target = RuleEngine.convert(this.userOriginal, cfg.intensity, cfg.attitude, cfg.rules, withEmoticon);
         if (!target.equals(raw)) {
             Log.d(TAG, "写入: raw=" + raw + "  userOriginal=" + this.userOriginal + "  target=" + target);
             boolean ok = setText(inp, target);
@@ -191,30 +200,59 @@ public class QQAccessibilityService extends AccessibilityService {
         this.processing = false;
     }
 
-    private CatConfig cloneConfigWithoutEmoticon(CatConfig src) {
-        CatConfig c = new CatConfig();
-        c.enableAppend = src.enableAppend;
-        c.appendText = src.appendText;
-        c.enableRandomEmoticon = false;
-        c.processingMode = src.processingMode;
-        c.customEmoticons = src.customEmoticons;
-        c.rules = src.rules;
-        return c;
+    private void launchEngineRewrite(String input, CatConfig cfg) {
+        new Thread(() -> {
+            AiConfig aiCfg = AiConfig.load(QQAccessibilityService.this);
+            String result = Engine.process(input, cfg, aiCfg);
+            postToMain(() -> {
+                try {
+                    writeProcessedText(result);
+                } finally {
+                    processing = false;
+                }
+            });
+        }).start();
     }
 
-    private String stripAll(String text, CatConfig cfg) {
+    private void writeProcessedText(String target) {
+        AccessibilityNodeInfo root = getRootInActiveWindow();
+        if (root == null) {
+            return;
+        }
+        AccessibilityNodeInfo inp = findNodeById(root, ID_INPUT);
+        if (inp == null) {
+            inp = findEditable(root);
+        }
+        root.recycle();
+        if (inp == null) {
+            return;
+        }
+        CharSequence cs = inp.getText();
+        String raw = cs != null ? cs.toString().trim() : "";
+        if (!raw.equals(target)) {
+            boolean ok = setText(inp, target);
+            if (ok) {
+                this.lastSet = target;
+                this.lastWriteTime = System.currentTimeMillis();
+            }
+        }
+        inp.recycle();
+    }
+
+    private void postToMain(Runnable r) {
+        new Handler(Looper.getMainLooper()).post(r);
+    }
+
+    private String stripAll(String text) {
         if (text == null || text.isEmpty()) {
             return "";
         }
         String result = text;
-        String[] emotes = cfg.getActiveEmoticons();
-        if (emotes.length == 0) {
-            emotes = CatConfig.BUILTIN_EMOTICONS;
-        }
-        Arrays.sort(emotes, new Comparator() {
+        String[] emotes = RuleEngine.ALL_EMOTICONS;
+        Arrays.sort(emotes, new Comparator<String>() {
             @Override
-            public int compare(Object obj, Object obj2) {
-                return QQAccessibilityService.lambda$stripAll$0((String) obj, (String) obj2);
+            public int compare(String a, String b) {
+                return b.length() - a.length();
             }
         });
         for (String em : emotes) {
@@ -233,10 +271,6 @@ public class QQAccessibilityService extends AccessibilityService {
             }
         }
         return result.replaceAll("\\s*[\\p{S}\\p{So}\\p{Sm}\\p{Sk}\\p{P}]{3,}\\s*", " ").trim();
-    }
-
-    static  int lambda$stripAll$0(String a, String b) {
-        return b.length() - a.length();
     }
 
     private AccessibilityNodeInfo findNodeById(AccessibilityNodeInfo n, String id) {
