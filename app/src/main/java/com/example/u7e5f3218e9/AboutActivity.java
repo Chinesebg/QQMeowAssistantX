@@ -4,12 +4,9 @@ import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Outline;
-import android.graphics.RenderEffect;
-import android.graphics.Shader;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -23,6 +20,9 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.core.widget.TextViewCompat;
 
 import com.google.android.material.appbar.MaterialToolbar;
@@ -46,6 +46,12 @@ public class AboutActivity extends AppCompatActivity {
         toolbar.setTitle(R.string.settings_about);
         toolbar.setNavigationIcon(R.drawable.ic_back);
         toolbar.setNavigationOnClickListener(v -> finish());
+        // Android 15 强制边到边：给工具栏补状态栏高度，避免左上角返回键与状态栏重叠。
+        ViewCompat.setOnApplyWindowInsetsListener(toolbar, (v, insets) -> {
+            Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(v.getPaddingLeft(), bars.top, v.getPaddingRight(), v.getPaddingBottom());
+            return insets;
+        });
         root.addView(toolbar, new LinearLayout.LayoutParams(-1, -2));
 
         ScrollView scroll = new ScrollView(this);
@@ -125,23 +131,13 @@ public class AboutActivity extends AppCompatActivity {
         parent.addView(card, cardLp);
     }
 
-    /** Android 12+ 原生背景模糊：模糊宿主内容（弹窗背后的整屏内容），参照 LibChecker。 */
+    /** Android 12+ 原生背景模糊：模糊宿主内容（弹窗背后的整屏内容），逻辑见 {@link BlurHelper}。 */
     private void applyHostBlur(boolean on) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-            return;
-        }
-        View content = findViewById(android.R.id.content);
-        if (content != null) {
-            content.setRenderEffect(on
-                    ? RenderEffect.createBlurEffect(dp(24), dp(24), Shader.TileMode.CLAMP)
-                    : null);
-        }
+        BlurHelper.applyHostBlur(this, on);
     }
 
     private void showWithBlur(android.app.Dialog dialog) {
-        dialog.setOnDismissListener(d -> applyHostBlur(false));
-        applyHostBlur(true);
-        dialog.show();
+        BlurHelper.showWithBlur(this, dialog);
     }
 
     private void showDevelopersSheet() {

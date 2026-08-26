@@ -1,5 +1,7 @@
 package com.example.u7e5f3218e9;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
 import android.accessibilityservice.AccessibilityServiceInfo;
 import android.content.Intent;
 import android.content.res.ColorStateList;
@@ -11,6 +13,7 @@ import android.graphics.ColorMatrix;
 import android.graphics.ColorMatrixColorFilter;
 import android.graphics.RenderEffect;
 import android.graphics.Shader;
+import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
@@ -22,6 +25,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityManager;
+import android.widget.CompoundButton;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -33,7 +37,6 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
-import androidx.core.graphics.ColorUtils;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
@@ -47,6 +50,8 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.materialswitch.MaterialSwitch;
+import com.google.android.material.shape.CornerFamily;
+import com.google.android.material.shape.ShapeAppearanceModel;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
@@ -69,6 +74,29 @@ public class MainActivity extends AppCompatActivity {
     private MaterialButton toggleButton;
     private View homeView;
     private View settingsView;
+    private View contentView;
+    private int bottomInset = 0;
+    private BottomNavigationView nav;
+    private boolean navHidden = false;
+    private boolean fixedBottomBar = true;
+
+    /** 垂直滑动时底栏随滑动隐藏/显示（仅当「固定底栏」关闭时生效）。 */
+    private final View.OnScrollChangeListener navScrollListener = new View.OnScrollChangeListener() {
+        @Override
+        public void onScrollChange(View v, int scrollX, int scrollY, int oldScrollX, int oldScrollY) {
+            if (fixedBottomBar) {
+                return;
+            }
+            int dy = scrollY - oldScrollY;
+            if (scrollY <= 0) {
+                setNavVisible(true);
+            } else if (dy > dp(2)) {
+                setNavVisible(false);
+            } else if (dy < -dp(2)) {
+                setNavVisible(true);
+            }
+        }
+    };
 
     // 态度 / 强度
     private String selectedAttitude;
@@ -104,6 +132,7 @@ public class MainActivity extends AppCompatActivity {
         } catch (Exception e) {
             this.bgConfig = new BackgroundConfig();
         }
+        this.fixedBottomBar = UiConfig.fixedBottomBar(this);
         setupEdgeToEdge();
         setContentView(buildRoot());
         applyBackground();
@@ -123,14 +152,28 @@ public class MainActivity extends AppCompatActivity {
         main.setOrientation(LinearLayout.VERTICAL);
 
         FrameLayout content = new FrameLayout(this);
+        this.contentView = content;
         this.homeView = buildHomeView();
         this.settingsView = buildSettingsView();
         content.addView(this.homeView, new FrameLayout.LayoutParams(-1, -1));
         content.addView(this.settingsView, new FrameLayout.LayoutParams(-1, -1));
         this.settingsView.setVisibility(View.GONE);
+        this.homeView.setOnScrollChangeListener(navScrollListener);
+        this.settingsView.setOnScrollChangeListener(navScrollListener);
 
         BottomNavigationView nav = new BottomNavigationView(this);
+        this.nav = nav;
         nav.inflateMenu(R.menu.bottom_nav_menu);
+        // 让底栏跟随主题色：背景用 colorSurface，选中项用 colorPrimary，指示器用 colorSecondaryContainer
+        nav.setBackgroundColor(colorAttr(com.google.android.material.R.attr.colorSurface));
+        ColorStateList navTint = new ColorStateList(
+                new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
+                new int[]{colorAttr(com.google.android.material.R.attr.colorPrimary),
+                        colorAttr(com.google.android.material.R.attr.colorOnSurfaceVariant)});
+        nav.setItemIconTintList(navTint);
+        nav.setItemTextColor(navTint);
+        nav.setItemActiveIndicatorColor(ColorStateList.valueOf(
+                colorAttr(com.google.android.material.R.attr.colorSecondaryContainer)));
         nav.setOnItemSelectedListener(new BottomNavigationView.OnItemSelectedListener() {
             @Override
             public boolean onNavigationItemSelected(@NonNull MenuItem item) {
@@ -138,10 +181,12 @@ public class MainActivity extends AppCompatActivity {
                 if (id == R.id.navigation_home) {
                     homeView.setVisibility(View.VISIBLE);
                     settingsView.setVisibility(View.GONE);
+                    setNavVisible(true);
                     return true;
                 } else if (id == R.id.navigation_settings) {
                     homeView.setVisibility(View.GONE);
                     settingsView.setVisibility(View.VISIBLE);
+                    setNavVisible(true);
                     return true;
                 }
                 return false;
@@ -157,6 +202,7 @@ public class MainActivity extends AppCompatActivity {
         // 沉浸式：内容避开状态栏；底部手势条由 BottomNavigationView 自动避让
         ViewCompat.setOnApplyWindowInsetsListener(content, (v, insets) -> {
             Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            bottomInset = bars.bottom;
             v.setPadding(0, bars.top, 0, 0);
             return insets;
         });
@@ -363,79 +409,118 @@ public class MainActivity extends AppCompatActivity {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(dp(16), dp(24), dp(16), dp(24));
 
-        MaterialCardView card = new MaterialCardView(this);
-        card.setCardElevation(0);
-        card.setStrokeWidth(1);
-        card.setStrokeColor(colorAttr(com.google.android.material.R.attr.colorOutlineVariant));
-        card.setCardBackgroundColor(ColorUtils.setAlphaComponent(
-                colorAttr(com.google.android.material.R.attr.colorSurface), 0xD9));
-        LinearLayout cardContent = new LinearLayout(this);
-        cardContent.setOrientation(LinearLayout.VERTICAL);
-
-        cardContent.addView(makeSettingsRow(R.drawable.ic_palette, getString(R.string.settings_theme_color), false,
+        // 个性化：主题色 / 深色 / 背景 / 弹窗模糊 / 固定底栏
+        List<View> personalization = new ArrayList<>();
+        personalization.add(makeSettingsRow(R.drawable.ic_palette, getString(R.string.settings_theme_color), false,
                 v -> showThemeDialog()));
-        cardContent.addView(listDivider());
-        cardContent.addView(makeSettingsRow(R.drawable.ic_dark_mode, getString(R.string.settings_dark_mode), false,
+        personalization.add(makeSettingsRow(R.drawable.ic_dark_mode, getString(R.string.settings_dark_mode), false,
                 v -> showDarkModeDialog()));
-        cardContent.addView(listDivider());
-        cardContent.addView(makeSettingsRow(R.drawable.ic_ai, getString(R.string.settings_ai), false,
-                v -> showAiSettingsDialog()));
-        cardContent.addView(listDivider());
-        cardContent.addView(makeSettingsRow(R.drawable.ic_info, getString(R.string.settings_about), true,
-                v -> startActivity(new Intent(MainActivity.this, AboutActivity.class))));
-        cardContent.addView(listDivider());
-        cardContent.addView(makeSettingsRow(R.drawable.ic_upgrade, getString(R.string.settings_get_updates), true,
-                v -> showGetUpdatesSheet()));
-        cardContent.addView(listDivider());
-        cardContent.addView(makeSettingsRow(R.drawable.ic_language, getString(R.string.settings_language), false,
-                v -> onLanguageTap()));
-
-        card.addView(cardContent, new LinearLayout.LayoutParams(-1, -2));
-        root.addView(card, new LinearLayout.LayoutParams(-1, -2));
-
-        LinearLayout.LayoutParams bgLp = new LinearLayout.LayoutParams(-1, -2);
-        bgLp.setMargins(0, dp(16), 0, 0);
-        root.addView(buildBackgroundCard(), bgLp);
-
-        scroll.addView(root, new LinearLayout.LayoutParams(-1, -2));
-        return scroll;
-    }
-
-    private View buildBackgroundCard() {
-        MaterialCardView card = new MaterialCardView(this);
-        card.setCardElevation(0);
-        card.setStrokeWidth(1);
-        card.setStrokeColor(colorAttr(com.google.android.material.R.attr.colorOutlineVariant));
-        card.setRadius(dp(16));
-        card.setCardBackgroundColor(ColorUtils.setAlphaComponent(
-                colorAttr(com.google.android.material.R.attr.colorSurface), 0xD9));
-
-        LinearLayout content = new LinearLayout(this);
-        content.setOrientation(LinearLayout.VERTICAL);
-
-        content.addView(makeSettingsRow(R.drawable.ic_image, getString(R.string.settings_bg_image), false,
+        personalization.add(makeSettingsRow(R.drawable.ic_image, getString(R.string.settings_bg_image), false,
                 v -> openImagePicker()));
-        content.addView(listDivider());
-        content.addView(makeSettingsRow(R.drawable.ic_clear, getString(R.string.settings_bg_clear), false,
+        personalization.add(makeSettingsRow(R.drawable.ic_clear, getString(R.string.settings_bg_clear), false,
                 v -> clearBackground()));
-        content.addView(listDivider());
-        content.addView(makeSliderRow(R.string.settings_bg_blur, this.bgConfig.blur, 0, BackgroundConfig.MAX_BLUR,
+        personalization.add(makeSliderRow(R.string.settings_bg_blur, this.bgConfig.blur, 0, BackgroundConfig.MAX_BLUR,
                 v -> {
                     bgConfig.blur = v;
                     bgConfig.save(MainActivity.this);
                     applyBlur();
                 }));
-        content.addView(listDivider());
-        content.addView(makeSliderRow(R.string.settings_bg_dim, this.bgConfig.brightness,
+        personalization.add(makeSliderRow(R.string.settings_bg_dim, this.bgConfig.brightness,
                 BackgroundConfig.MIN_BRIGHTNESS, BackgroundConfig.MAX_BRIGHTNESS,
                 v -> {
                     bgConfig.brightness = v;
                     bgConfig.save(MainActivity.this);
                     applyBrightness();
                 }));
+        personalization.add(makeSliderRow(R.string.settings_dialog_blur, UiConfig.dialogBlur(this),
+                0, UiConfig.MAX_DIALOG_BLUR,
+                v -> UiConfig.setDialogBlur(MainActivity.this, v)));
+        personalization.add(makeSettingsSwitchRow(R.drawable.ic_pin,
+                getString(R.string.settings_fixed_bottom_bar),
+                getString(R.string.settings_fixed_bottom_bar_desc),
+                UiConfig.fixedBottomBar(this),
+                (buttonView, isChecked) -> {
+                    fixedBottomBar = isChecked;
+                    UiConfig.setFixedBottomBar(MainActivity.this, isChecked);
+                    if (isChecked) {
+                        setNavVisible(true);
+                    }
+                }));
+        addSettingsGroup(root, R.string.settings_section_personalization, personalization);
 
-        card.addView(content, new LinearLayout.LayoutParams(-1, -2));
-        return card;
+        // 通知
+        List<View> notification = new ArrayList<>();
+        notification.add(makeSettingsSwitchRow(R.drawable.ic_notifications,
+                getString(R.string.settings_ai_toast),
+                getString(R.string.settings_ai_toast_desc),
+                UiConfig.aiToastEnabled(this),
+                (buttonView, isChecked) -> UiConfig.setAiToastEnabled(MainActivity.this, isChecked)));
+        addSettingsGroup(root, R.string.settings_section_notification, notification);
+
+        // AI
+        List<View> ai = new ArrayList<>();
+        ai.add(makeSettingsRow(R.drawable.ic_ai, getString(R.string.settings_ai), false,
+                v -> showAiSettingsDialog()));
+        addSettingsGroup(root, R.string.settings_section_ai, ai);
+
+        // 关于
+        List<View> about = new ArrayList<>();
+        about.add(makeSettingsRow(R.drawable.ic_info, getString(R.string.settings_about), true,
+                v -> startActivity(new Intent(MainActivity.this, AboutActivity.class))));
+        about.add(makeSettingsRow(R.drawable.ic_upgrade, getString(R.string.settings_get_updates), true,
+                v -> showGetUpdatesSheet()));
+        about.add(makeSettingsRow(R.drawable.ic_language, getString(R.string.settings_language), false,
+                v -> onLanguageTap()));
+        addSettingsGroup(root, R.string.settings_section_about, about);
+
+        scroll.addView(root, new LinearLayout.LayoutParams(-1, -2));
+        return scroll;
+    }
+
+    /** 底栏显示/隐藏（随滑动）。参照 LibChecker 的 HideBottomViewOnScrollBehavior：滑出动画结束后置 GONE 以回收占位。 */
+    private void setNavVisible(boolean visible) {
+        if (this.nav == null) {
+            return;
+        }
+        if (visible == !this.navHidden) {
+            return;
+        }
+        if (!visible && this.nav.getHeight() <= 0) {
+            return;
+        }
+        this.navHidden = !visible;
+        if (visible) {
+            setContentBottomInset(false);
+            this.nav.setVisibility(View.VISIBLE);
+            this.nav.animate()
+                    .translationY(0f)
+                    .setDuration(200L)
+                    .start();
+        } else {
+            final int h = this.nav.getHeight();
+            this.nav.animate()
+                    .translationY(h)
+                    .setDuration(200L)
+                    .setListener(new AnimatorListenerAdapter() {
+                        @Override
+                        public void onAnimationEnd(Animator animation) {
+                            if (navHidden) {
+                                nav.setVisibility(View.GONE);
+                                setContentBottomInset(true);
+                            }
+                        }
+                    })
+                    .start();
+        }
+    }
+
+    /** 底栏隐藏时给内容区补上底部手势条 inset，避免内容被手势条遮挡。 */
+    private void setContentBottomInset(boolean add) {
+        if (this.contentView == null) {
+            return;
+        }
+        this.contentView.setPadding(this.contentView.getPaddingLeft(), this.contentView.getPaddingTop(),
+                this.contentView.getPaddingRight(), add ? this.bottomInset : 0);
     }
 
     // ---------------------------------------------------------------- 小组件
@@ -591,13 +676,94 @@ public class MainActivity extends AppCompatActivity {
         return box;
     }
 
-    private View listDivider() {
-        View v = new View(this);
-        v.setBackgroundColor(colorAttr(com.google.android.material.R.attr.colorOutlineVariant));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, 1);
-        lp.setMarginStart(dp(56));
-        v.setLayoutParams(lp);
-        return v;
+    /** 设置页分区标题（rikkahub CardGroup 风格：主色、加粗 titleSmall）。 */
+    private void addSettingsSectionTitle(LinearLayout parent, int textRes) {
+        TextView tv = new TextView(this);
+        tv.setText(textRes);
+        TextViewCompat.setTextAppearance(tv, com.google.android.material.R.style.TextAppearance_Material3_TitleSmall);
+        tv.setTypeface(Typeface.DEFAULT_BOLD);
+        tv.setTextColor(colorAttr(com.google.android.material.R.attr.colorPrimary));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+        lp.setMargins(dp(4), dp(20), dp(4), dp(8));
+        parent.addView(tv, lp);
+    }
+
+    /** 新增一组设置项（rikkahub CardGroup 风格：每项独立圆角卡片，首尾大圆角、中间小圆角）。 */
+    private void addSettingsGroup(LinearLayout root, int titleRes, List<View> items) {
+        addSettingsSectionTitle(root, titleRes);
+        int n = items.size();
+        float outer = dp(20);
+        float inner = dp(4);
+        for (int i = 0; i < n; i++) {
+            View row = items.get(i);
+            boolean first = i == 0;
+            boolean last = i == n - 1;
+            float top = (first || n == 1) ? outer : inner;
+            float bottom = (last || n == 1) ? outer : inner;
+            ShapeAppearanceModel sam = new ShapeAppearanceModel.Builder()
+                    .setTopLeftCorner(CornerFamily.ROUNDED, top)
+                    .setTopRightCorner(CornerFamily.ROUNDED, top)
+                    .setBottomLeftCorner(CornerFamily.ROUNDED, bottom)
+                    .setBottomRightCorner(CornerFamily.ROUNDED, bottom)
+                    .build();
+
+            MaterialCardView card = new MaterialCardView(this);
+            card.setCardElevation(0);
+            card.setStrokeWidth(0);
+            card.setShapeAppearanceModel(sam);
+            card.setCardBackgroundColor(colorAttr(com.google.android.material.R.attr.colorSurfaceContainer));
+            card.addView(row, new LinearLayout.LayoutParams(-1, -2));
+
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+            if (i < n - 1) {
+                lp.setMargins(0, 0, 0, dp(2));
+            }
+            root.addView(card, lp);
+        }
+    }
+
+    /** 带右侧开关的设置行（整行可点击切换）。 */
+    private View makeSettingsSwitchRow(int iconRes, String title, String subtitle, boolean checked,
+                                       CompoundButton.OnCheckedChangeListener listener) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(16), dp(6), dp(6), dp(6));
+
+        ImageView icon = new ImageView(this);
+        icon.setImageResource(iconRes);
+        row.addView(icon, new LinearLayout.LayoutParams(dp(24), dp(24)));
+
+        LinearLayout textBox = new LinearLayout(this);
+        textBox.setOrientation(LinearLayout.VERTICAL);
+        TextView titleTv = new TextView(this);
+        titleTv.setText(title);
+        TextViewCompat.setTextAppearance(titleTv, com.google.android.material.R.style.TextAppearance_Material3_BodyLarge);
+        titleTv.setTextColor(colorAttr(com.google.android.material.R.attr.colorOnSurface));
+        textBox.addView(titleTv, new LinearLayout.LayoutParams(-2, -2));
+        if (subtitle != null && !subtitle.isEmpty()) {
+            TextView subTv = new TextView(this);
+            subTv.setText(subtitle);
+            TextViewCompat.setTextAppearance(subTv, com.google.android.material.R.style.TextAppearance_Material3_BodySmall);
+            subTv.setTextColor(colorAttr(com.google.android.material.R.attr.colorOnSurfaceVariant));
+            textBox.addView(subTv, new LinearLayout.LayoutParams(-2, -2));
+        }
+        LinearLayout.LayoutParams textLp = new LinearLayout.LayoutParams(0, -2, 1.0f);
+        textLp.setMarginStart(dp(16));
+        row.addView(textBox, textLp);
+
+        final MaterialSwitch sw = new MaterialSwitch(this);
+        sw.setChecked(checked);
+        sw.setOnCheckedChangeListener(listener);
+        row.addView(sw, new LinearLayout.LayoutParams(-2, -2));
+
+        row.setClickable(true);
+        row.setFocusable(true);
+        TypedValue bg = new TypedValue();
+        getTheme().resolveAttribute(android.R.attr.selectableItemBackground, bg, true);
+        row.setBackgroundResource(bg.resourceId);
+        row.setOnClickListener(v -> sw.toggle());
+        return row;
     }
 
     // ---------------------------------------------------------------- 背景
@@ -735,23 +901,13 @@ public class MainActivity extends AppCompatActivity {
         return mode == Configuration.UI_MODE_NIGHT_YES;
     }
 
-    /** Android 12+ 原生背景模糊：模糊宿主内容（弹窗背后的整屏内容），参照 LibChecker。 */
+    /** Android 12+ 原生背景模糊：模糊宿主内容（弹窗背后的整屏内容），逻辑见 {@link BlurHelper}。 */
     private void applyHostBlur(boolean on) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-            return;
-        }
-        View content = findViewById(android.R.id.content);
-        if (content != null) {
-            content.setRenderEffect(on
-                    ? RenderEffect.createBlurEffect(dp(24), dp(24), Shader.TileMode.CLAMP)
-                    : null);
-        }
+        BlurHelper.applyHostBlur(this, on);
     }
 
     private void showWithBlur(android.app.Dialog dialog) {
-        dialog.setOnDismissListener(d -> applyHostBlur(false));
-        applyHostBlur(true);
-        dialog.show();
+        BlurHelper.showWithBlur(this, dialog);
     }
 
     private void showThemeDialog() {
@@ -1117,7 +1273,9 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         // AI / 混合：异步
-        Toast.makeText(this, R.string.ai_processing, Toast.LENGTH_SHORT).show();
+        if (UiConfig.aiToastEnabled(this)) {
+            Toast.makeText(this, R.string.ai_processing, Toast.LENGTH_SHORT).show();
+        }
         new Thread(() -> {
             AiConfig aiCfg = AiConfig.load(MainActivity.this);
             String result = Engine.process(sample, testCfg, aiCfg);

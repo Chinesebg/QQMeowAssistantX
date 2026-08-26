@@ -64,6 +64,19 @@
     <string name="settings_bg_clear">清除背景图片</string>
     <string name="settings_bg_blur">背景模糊半径</string>
     <string name="settings_bg_dim">背景明暗度</string>
+    <string name="settings_dialog_blur">弹窗背景模糊</string>
+
+    <!-- 设置分类 -->
+    <string name="settings_section_personalization">个性化</string>
+    <string name="settings_section_notification">通知</string>
+    <string name="settings_section_ai">AI</string>
+    <string name="settings_section_about">关于</string>
+
+    <!-- 通知 / 界面开关 -->
+    <string name="settings_ai_toast">AI处理toast通知</string>
+    <string name="settings_ai_toast_desc">使用 AI / 混合模式处理时弹出提示</string>
+    <string name="settings_fixed_bottom_bar">固定底栏</string>
+    <string name="settings_fixed_bottom_bar_desc">关闭后滑动时自动隐藏底栏</string>
 
     <!-- 关于 -->
     <string name="about_devs">DEVS</string>

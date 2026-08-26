@@ -2,12 +2,19 @@ package com.example.u7e5f3218e9;
 
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.AccessibilityServiceInfo;
+import android.graphics.Color;
+import android.graphics.PixelFormat;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import android.view.Gravity;
+import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
+import android.widget.TextView;
+import android.widget.Toast;
 import java.util.Arrays;
 import java.util.Comparator;
 
@@ -17,7 +24,6 @@ public class QQAccessibilityService extends AccessibilityService {
     private static final String PKG_QQ = "com.tencent.mobileqq";
     private static final String PKG_QQI = "com.tencent.mobileqqi";
     private static final String TAG = "QQCatSvc";
-    private CatConfig cachedConfig;
     private String userOriginal = "";
     private String lastSet = "";
     private boolean processing = false;
@@ -33,7 +39,6 @@ public class QQAccessibilityService extends AccessibilityService {
                 this.userOriginal = "";
                 this.lastSet = "";
                 this.lastWriteTime = 0L;
-                this.cachedConfig = CatConfig.load(this);
                 return;
             }
             if (type == 1) {
@@ -50,11 +55,8 @@ public class QQAccessibilityService extends AccessibilityService {
                 return;
             }
             if (type == 16) {
-                CatConfig cfg = this.cachedConfig;
-                if (cfg == null) {
-                    cfg = CatConfig.load(this);
-                    this.cachedConfig = cfg;
-                }
+                // 每次事件都重新读取配置，保证在主界面切换引擎 / 模式后即时生效。
+                CatConfig cfg = CatConfig.load(this);
                 String mode = cfg.processingMode != null ? cfg.processingMode : CatConfig.MODE_PUNCTUATION;
                 if (CatConfig.MODE_REALTIME.equals(mode)) {
                     doProcess(false);
@@ -90,8 +92,31 @@ public class QQAccessibilityService extends AccessibilityService {
         if (s == null || s.isEmpty()) {
             return false;
         }
-        char last = s.charAt(s.length() - 1);
-        return last == 12290 || last == 65281 || last == '!' || last == 65311 || last == '?' || last == ' ';
+        return isTriggerPunctuation(s.charAt(s.length() - 1));
+    }
+
+    /** 句末触发标点：全角 / 半角均支持（含逗号）。 */
+    private boolean isTriggerPunctuation(char c) {
+        switch (c) {
+            case '。':  // 全角句号
+            case '，':  // 全角逗号
+            case '！':  // 全角感叹号
+            case '？':  // 全角问号
+            case '；':  // 全角分号
+            case '：':  // 全角冒号
+            case '、':  // 全角顿号
+            case '…':  // 省略号
+            case '.':   // 半角句号
+            case ',':   // 半角逗号
+            case '!':   // 半角感叹号
+            case '?':   // 半角问号
+            case ';':   // 半角分号
+            case ':':   // 半角冒号
+            case ' ':   // 空格
+                return true;
+            default:
+                return false;
+        }
     }
 
     private void doProcess(boolean isSendClick) {
@@ -131,11 +156,8 @@ public class QQAccessibilityService extends AccessibilityService {
             this.lastSet = "";
             return;
         }
-        CatConfig cfg = this.cachedConfig;
-        if (cfg == null) {
-            cfg = CatConfig.load(this);
-            this.cachedConfig = cfg;
-        }
+        // 每次处理都重新读取配置，保证引擎 / 模式切换即时生效（不依赖窗口切换事件刷新缓存）。
+        CatConfig cfg = CatConfig.load(this);
         long now = System.currentTimeMillis();
         long j = this.lastWriteTime;
         if (j > 0 && now - j < 600 && raw.equals(this.lastSet)) {
@@ -201,6 +223,10 @@ public class QQAccessibilityService extends AccessibilityService {
     }
 
     private void launchEngineRewrite(String input, CatConfig cfg) {
+        // 处理开始时弹 toast 通知（无障碍服务在后台，普通 Toast 常被系统/厂商 ROM 拦截，改用覆盖层）。
+        if (UiConfig.aiToastEnabled(this)) {
+            showOverlayToast(R.string.ai_processing);
+        }
         new Thread(() -> {
             AiConfig aiCfg = AiConfig.load(QQAccessibilityService.this);
             String result = Engine.process(input, cfg, aiCfg);
@@ -212,6 +238,50 @@ public class QQAccessibilityService extends AccessibilityService {
                 }
             });
         }).start();
+    }
+
+    /** 用 TYPE_ACCESSIBILITY_OVERLAY 画一个自定义 toast，避免后台服务里普通 Toast 不显示。 */
+    private void showOverlayToast(final int textRes) {
+        postToMain(() -> {
+            try {
+                WindowManager wm = (WindowManager) getSystemService(WINDOW_SERVICE);
+                float density = getResources().getDisplayMetrics().density;
+                TextView tv = new TextView(this);
+                tv.setText(textRes);
+                tv.setTextColor(Color.WHITE);
+                tv.setTextSize(14);
+                tv.setGravity(Gravity.CENTER);
+                GradientDrawable bg = new GradientDrawable();
+                bg.setColor(0xE6000000);
+                bg.setCornerRadius(24 * density);
+                tv.setBackground(bg);
+                tv.setPadding((int) (20 * density), (int) (12 * density),
+                        (int) (20 * density), (int) (12 * density));
+
+                WindowManager.LayoutParams lp = new WindowManager.LayoutParams(
+                        WindowManager.LayoutParams.WRAP_CONTENT,
+                        WindowManager.LayoutParams.WRAP_CONTENT,
+                        WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                                | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                        PixelFormat.TRANSLUCENT);
+                lp.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
+                lp.y = (int) (80 * density);
+
+                wm.addView(tv, lp);
+                tv.postDelayed(() -> {
+                    try {
+                        wm.removeView(tv);
+                    } catch (Exception ignored) {
+                    }
+                }, 2000);
+                Log.d(TAG, "AI 处理开始，弹出覆盖层 toast");
+            } catch (Exception e) {
+                // 覆盖层失败时回退普通 Toast
+                Toast.makeText(this, textRes, Toast.LENGTH_SHORT).show();
+                Log.d(TAG, "覆盖层失败，回退普通 Toast: " + e.getMessage());
+            }
+        });
     }
 
     private void writeProcessedText(String target) {
@@ -348,6 +418,5 @@ public class QQAccessibilityService extends AccessibilityService {
         i.notificationTimeout = 50L;
         i.packageNames = new String[]{PKG_QQ, PKG_QQI};
         setServiceInfo(i);
-        this.cachedConfig = CatConfig.load(this);
     }
 }
