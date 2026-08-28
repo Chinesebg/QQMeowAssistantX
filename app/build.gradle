@@ -1,0 +1,78 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.plugin.compose'
+}
+
+android {
+    signingConfigs {
+   
+        release {
+   
+            storeFile file("../keystore/release.jks")     // 相对路径更安全
+            storePassword project.hasProperty('RELEASE_KEYSTORE_PASSWORD') ? RELEASE_KEYSTORE_PASSWORD : System.getenv('RELEASE_KEYSTORE_PASSWORD')
+            keyAlias project.hasProperty('RELEASE_KEY_ALIAS') ? RELEASE_KEY_ALIAS : System.getenv('RELEASE_KEY_ALIAS')
+            keyPassword project.hasProperty('RELEASE_KEY_PASSWORD') ? RELEASE_KEY_PASSWORD : System.getenv('RELEASE_KEY_PASSWORD')
+        }
+    }
+
+    buildTypes {
+   
+        release {
+   
+            minifyEnabled true
+            shrinkResources true                          // 自动移除未使用的资源
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
+            // 启用 R8 全程序优化（默认已启用）
+        }
+        debug {
+   
+            // debug 默认使用 ~/.android/debug.keystore，无需显式配置
+            debuggable true
+            minifyEnabled false
+        }
+    }
+    namespace 'com.example.u7e5f3218e9'
+    compileSdk 37
+
+    defaultConfig {
+        applicationId "com.example.u7e5f3218e9"
+        minSdk 23
+        targetSdk 35
+        versionCode 4
+        versionName "1.2.0"
+    }
+
+    buildFeatures {
+        compose true
+        buildConfig true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+}
+
+dependencies {
+    // 原有 Material 3 风格 UI（保留第一套 UI）
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'com.google.android.material:material:1.12.0'
+
+    // Compose + Miuix（第二套 UI，参照 MiaoAssistant）
+    implementation platform('androidx.compose:compose-bom:2026.08.00')
+    implementation 'androidx.compose.ui:ui'
+    implementation 'androidx.compose.ui:ui-tooling-preview'
+    implementation 'androidx.compose.material:material-icons-extended'
+    implementation 'androidx.activity:activity-compose:1.13.0'
+    implementation 'androidx.core:core-ktx:1.19.0'
+    implementation 'top.yukonga.miuix.kmp:miuix-ui-android:0.9.3'
+    implementation 'top.yukonga.miuix.kmp:miuix-preference-android:0.9.3'
+    implementation 'top.yukonga.miuix.kmp:miuix-icons-android:0.9.3'
+    implementation 'top.yukonga.miuix.kmp:miuix-blur-android:0.9.3'
+    implementation 'io.github.kyant0:backdrop:2.0.1'
+
+    debugImplementation 'androidx.compose.ui:ui-tooling'
+    debugImplementation 'androidx.compose.ui:ui-test-manifest'
+}
