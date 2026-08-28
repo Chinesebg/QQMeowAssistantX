@@ -13,6 +13,17 @@
         <item name="colorSurface">#201A17</item>
         <item name="colorOnSurface">#ECE0DE</item>
         <item name="colorSurfaceVariant">#52443C</item>
+
+        <item name="colorSurfaceContainer">#52443C</item>
+
+
+        <item name="colorSurfaceContainerLow">#52443C</item>
+
+
+        <item name="colorSurfaceContainerHigh">#52443C</item>
+
+
+        <item name="colorSurfaceContainerHighest">#52443C</item>
         <item name="colorOnSurfaceVariant">#D7C2B8</item>
         <item name="colorOutline">#A08C89</item>
         <item name="colorOutlineVariant">#52443C</item>
@@ -41,6 +52,17 @@
         <item name="colorSurface">#111318</item>
         <item name="colorOnSurface">#E1E2E8</item>
         <item name="colorSurfaceVariant">#43474E</item>
+
+        <item name="colorSurfaceContainer">#43474E</item>
+
+
+        <item name="colorSurfaceContainerLow">#43474E</item>
+
+
+        <item name="colorSurfaceContainerHigh">#43474E</item>
+
+
+        <item name="colorSurfaceContainerHighest">#43474E</item>
         <item name="colorOnSurfaceVariant">#C3C6CF</item>
         <item name="colorOutline">#8D9199</item>
         <item name="colorOutlineVariant">#43474E</item>
@@ -63,6 +85,17 @@
         <item name="colorSurface">#11140E</item>
         <item name="colorOnSurface">#E1E4DA</item>
         <item name="colorSurfaceVariant">#44483F</item>
+
+        <item name="colorSurfaceContainer">#44483F</item>
+
+
+        <item name="colorSurfaceContainerLow">#44483F</item>
+
+
+        <item name="colorSurfaceContainerHigh">#44483F</item>
+
+
+        <item name="colorSurfaceContainerHighest">#44483F</item>
         <item name="colorOnSurfaceVariant">#C4C9BB</item>
         <item name="colorOutline">#8E9388</item>
         <item name="colorOutlineVariant">#44483F</item>
@@ -85,6 +118,17 @@
         <item name="colorSurface">#201A1C</item>
         <item name="colorOnSurface">#EBE0E3</item>
         <item name="colorSurfaceVariant">#524348</item>
+
+        <item name="colorSurfaceContainer">#524348</item>
+
+
+        <item name="colorSurfaceContainerLow">#524348</item>
+
+
+        <item name="colorSurfaceContainerHigh">#524348</item>
+
+
+        <item name="colorSurfaceContainerHighest">#524348</item>
         <item name="colorOnSurfaceVariant">#D8C1C8</item>
         <item name="colorOutline">#A18B92</item>
         <item name="colorOutlineVariant">#524348</item>

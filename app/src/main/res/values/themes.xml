@@ -13,6 +13,17 @@
         <item name="colorSurface">#FFF8F6</item>
         <item name="colorOnSurface">#201A17</item>
         <item name="colorSurfaceVariant">#F3DED4</item>
+
+        <item name="colorSurfaceContainer">#F3DED4</item>
+
+
+        <item name="colorSurfaceContainerLow">#F3DED4</item>
+
+
+        <item name="colorSurfaceContainerHigh">#F3DED4</item>
+
+
+        <item name="colorSurfaceContainerHighest">#F3DED4</item>
         <item name="colorOnSurfaceVariant">#52443C</item>
         <item name="colorOutline">#85736A</item>
         <item name="colorOutlineVariant">#D7C2B8</item>
@@ -41,6 +52,17 @@
         <item name="colorSurface">#F8F9FF</item>
         <item name="colorOnSurface">#191C20</item>
         <item name="colorSurfaceVariant">#DFE2EB</item>
+
+        <item name="colorSurfaceContainer">#DFE2EB</item>
+
+
+        <item name="colorSurfaceContainerLow">#DFE2EB</item>
+
+
+        <item name="colorSurfaceContainerHigh">#DFE2EB</item>
+
+
+        <item name="colorSurfaceContainerHighest">#DFE2EB</item>
         <item name="colorOnSurfaceVariant">#43474E</item>
         <item name="colorOutline">#73777F</item>
         <item name="colorOutlineVariant">#C3C6CF</item>
@@ -63,6 +85,17 @@
         <item name="colorSurface">#F7FBF1</item>
         <item name="colorOnSurface">#191D17</item>
         <item name="colorSurfaceVariant">#DFE4D8</item>
+
+        <item name="colorSurfaceContainer">#DFE4D8</item>
+
+
+        <item name="colorSurfaceContainerLow">#DFE4D8</item>
+
+
+        <item name="colorSurfaceContainerHigh">#DFE4D8</item>
+
+
+        <item name="colorSurfaceContainerHighest">#DFE4D8</item>
         <item name="colorOnSurfaceVariant">#44483F</item>
         <item name="colorOutline">#74796E</item>
         <item name="colorOutlineVariant">#C4C9BB</item>
@@ -85,6 +118,17 @@
         <item name="colorSurface">#FFF8FA</item>
         <item name="colorOnSurface">#201A1C</item>
         <item name="colorSurfaceVariant">#F2DDE4</item>
+
+        <item name="colorSurfaceContainer">#F2DDE4</item>
+
+
+        <item name="colorSurfaceContainerLow">#F2DDE4</item>
+
+
+        <item name="colorSurfaceContainerHigh">#F2DDE4</item>
+
+
+        <item name="colorSurfaceContainerHighest">#F2DDE4</item>
         <item name="colorOnSurfaceVariant">#524348</item>
         <item name="colorOutline">#857377</item>
         <item name="colorOutlineVariant">#D8C1C8</item>

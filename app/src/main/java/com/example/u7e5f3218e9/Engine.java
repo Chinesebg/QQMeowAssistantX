@@ -20,6 +20,10 @@ public final class Engine {
         String intensity = cfg != null && cfg.intensity != null ? cfg.intensity : CatConfig.DEFAULT_INTENSITY;
         String attitude = cfg != null && cfg.attitude != null ? cfg.attitude : CatConfig.DEFAULT_ATTITUDE;
         List<CatConfig.Rule> rules = cfg != null ? cfg.rules : null;
+        boolean tailEnabled = cfg != null && cfg.tailEnabled;
+        String tailText = cfg != null && cfg.tailText != null ? cfg.tailText : CatConfig.DEFAULT_TAIL_TEXT;
+        boolean emoticonEnabled = cfg != null && cfg.emoticonEnabled;
+        String customEmoticons = cfg != null ? cfg.customEmoticons : "";
 
         if (CatConfig.MODE_ENGINE_AI.equals(engine)) {
             List<ChatMessage> messages = PromptBuilder.buildMessages(text, intensity, attitude);
@@ -31,11 +35,13 @@ public final class Engine {
             List<ChatMessage> messages = PromptBuilder.buildMessages(pre, intensity, attitude);
             String r = AiClient.complete(aiCfg, messages);
             if (isBlank(r)) {
-                return RuleEngine.convert(text, intensity, attitude, rules, true);
+                return RuleEngine.convert(text, intensity, attitude, rules, true, tailEnabled, tailText,
+                        emoticonEnabled, customEmoticons);
             }
-            return RuleEngine.finish(r);
+            return tailEnabled ? RuleEngine.finish(r, tailText) : RuleEngine.finish(r);
         }
-        return RuleEngine.convert(text, intensity, attitude, rules, true);
+        return RuleEngine.convert(text, intensity, attitude, rules, true, tailEnabled, tailText,
+                emoticonEnabled, customEmoticons);
     }
 
     private static boolean isBlank(String s) {

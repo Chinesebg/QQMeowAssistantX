@@ -203,7 +203,8 @@ public class QQAccessibilityService extends AccessibilityService {
             return;
         }
         boolean withEmoticon = !isRealtime || isSendClick;
-        String target = RuleEngine.convert(this.userOriginal, cfg.intensity, cfg.attitude, cfg.rules, withEmoticon);
+        String target = RuleEngine.convert(this.userOriginal, cfg.intensity, cfg.attitude, cfg.rules, withEmoticon,
+                cfg.tailEnabled, cfg.tailText, cfg.emoticonEnabled, cfg.customEmoticons);
         if (!target.equals(raw)) {
             Log.d(TAG, "写入: raw=" + raw + "  userOriginal=" + this.userOriginal + "  target=" + target);
             boolean ok = setText(inp, target);

@@ -41,6 +41,24 @@ public final class RuleEngine {
             "(｡･ω･｡)", "(≧▽≦)"
     };
 
+    /** 规则模式自定义颜文字的内置默认库。 */
+    public static final String[] CUSTOM_BUILTIN_EMOTICONS = {
+            "^⌯𖥦⌯^ ੭ ^", "⌯'ㅅ'⌯", "=^𖥦^=", "⌯•ㅅ•⌯",
+            "ฅ•̀∀•́ฅ", "ฅ ̳͒•ˑ̫• ̳͒ฅ♡", "ฅ(̳•·̫•̳ฅ)♡", "ฅ^••^ฅ",
+            "=^•ω•^=", "₍^ >ヮ<^₎", "/ᐠ - ˕ -マ Ⳋ", "ฅ^•ﻌ•^ฅ",
+            "ฅ՞•ﻌ•՞ฅ", "(ฅ´ω`ฅ)", "ฅ(*`ω´*)ฅ", "ฅ꒰ ⸝˶• •˶⸝꒱ฅ",
+            "₍˄·͈༝·͈˄*₎◞ ̑̑", "!!^⌯𖥦⌯^ ੭!!", "₍^⸝⸝> ·̫ <⸝⸝ ^₎", "ฅ^._.^ฅ",
+            "₍🎀˄•͈༝•͈˄₎ฅ˒˒", "^•͈༝•^ฅ", "꒰ఎ(^ . ֑ .^)໒꒱", "ฅ●ω●ฅ",
+            "₍⸍⸌·͈༝·͈⸍⸌₎◞", "(>^ω^<)", "ฅ^-﹃-^ฅ", "^ ̳ට ̫ ට ̳^",
+            "୧₍˄·͈༝·͈˄₎୨", "^ ̳ᴗ  ̫ ᴗ ̳^", "˓˓ก(⸍⸌̣ʷ̣̫⸍̣⸌₎ค˒˒", "ヽ(ฅ≧へ≦)ฅ",
+            "(`･ω･´)ฅ", "(=^･ᴥ･^=)", "(^ω^ฅ)", "ฅ(≧▽≦)ฅ",
+            "ฅ(=´▽`=)ฅ", "ヾ((๑˘ㅂ˘๑)ฅ", "(ฅ◑ω◑ฅ)", "(๑•̀ω•́ฅ)",
+            "(ฅ>ω<*ฅ)", "(=^.^=)", "(=´ᴥ`)", "(=ↀωↀ=)",
+            "(=^-ω-^=)", "ฅ(*°ω°*ฅ)", "ヽ(=^･ω･^=)丿", "(^•ᴥ•^)",
+            "( Φ ω Φ )", "(=^x^=)", "ฅ( ̳• ◡ • ̳)ฅ", "o( =•ω•= )m",
+            "~o( =∩ω∩= )m", "≡ω≡"
+    };
+
     private static final Pattern SENT_END_RE = Pattern.compile("[。！？!?；;]+");
     private static final Pattern END_PUNCT_RE = Pattern.compile("[。！？!?；;]+$");
     private static final Pattern CAT_TAIL_RE = Pattern.compile("(喵|喵呜|喵喵)(~|～)?$");
@@ -96,6 +114,17 @@ public final class RuleEngine {
      */
     public static String convert(String text, String intensity, String attitude,
                                  List<CatConfig.Rule> customRules, boolean withEmoticon) {
+        return convert(text, intensity, attitude, customRules, withEmoticon, false, null, false, null);
+    }
+
+    /**
+     * 完整规则转换。自定义句末文字和自定义颜文字作为规则模式的高优先级覆盖项：
+     * 自定义句末文字覆盖内置语气词；自定义颜文字覆盖内置颜文字库。
+     */
+    public static String convert(String text, String intensity, String attitude,
+                                 List<CatConfig.Rule> customRules, boolean withEmoticon,
+                                 boolean customTailEnabled, String tailText,
+                                 boolean customEmoticonEnabled, String customEmoticonsText) {
         if (text == null || text.trim().isEmpty()) {
             return text == null ? "" : text;
         }
@@ -106,10 +135,21 @@ public final class RuleEngine {
 
         List<String> sentences = splitSentences(t);
         sentences = applyLexicon(sentences, rs, inten);
-        sentences = applyTone(sentences, toneFor(rs, inten));
+        if (customTailEnabled) {
+            sentences = applyTail(sentences, tailText);
+        } else {
+            sentences = applyTone(sentences, toneFor(rs, inten));
+        }
         sentences = applyPunct(sentences, punctFor(rs, inten));
         if (withEmoticon) {
-            sentences = applyEmoticon(sentences, rs.emoticons, placementFor(rs, inten));
+            if (customEmoticonEnabled) {
+                String[] customEmoticons = parseEmoticons(customEmoticonsText);
+                if (customEmoticons.length > 0) {
+                    sentences = applyEmoticon(sentences, customEmoticons, placementFor(rs, inten));
+                }
+            } else {
+                sentences = applyEmoticon(sentences, rs.emoticons, placementFor(rs, inten));
+            }
         }
         return rstrip(join(sentences));
     }
@@ -127,26 +167,82 @@ public final class RuleEngine {
         return join(applyLexicon(splitSentences(t), rs, inten));
     }
 
-    /** 混合模式后处理：逐句补喵收尾（句尾已有喵/喵呜/喵喵，可带波浪线，则不重复）。 */
+    /** 混合模式后处理：逐句补默认「喵」收尾（句尾已有喵/喵呜/喵喵，可带波浪线，则不重复）。 */
     public static String finish(String text) {
+        return finish(text, CatConfig.DEFAULT_TAIL_TEXT);
+    }
+
+    /** 混合模式后处理：逐句补自定义句末文字（句尾已有相同文字则不重复）。 */
+    public static String finish(String text, String tailText) {
         if (text == null || text.isEmpty()) {
             return "";
         }
+        String tail = tailText == null || tailText.trim().isEmpty() ? CatConfig.DEFAULT_TAIL_TEXT : tailText.trim();
         List<String> sentences = splitSentences(text);
         StringBuilder out = new StringBuilder();
         for (String sentence : sentences) {
             Matcher m = END_PUNCT_RE.matcher(sentence);
             if (m.find()) {
                 String body = sentence.substring(0, m.start());
-                if (!CAT_TAIL_RE.matcher(body).find()) {
-                    sentence = body + "喵" + sentence.substring(m.start());
+                if (!hasTail(body, tail)) {
+                    sentence = body + tail + sentence.substring(m.start());
                 }
-            } else if (!CAT_TAIL_RE.matcher(sentence).find()) {
-                sentence = sentence + "喵";
+            } else if (!hasTail(sentence, tail)) {
+                sentence = sentence + tail;
             }
             out.append(sentence);
         }
         return rstrip(out.toString());
+    }
+
+    private static boolean hasTail(String text, String tail) {
+        if (text == null || text.isEmpty()) {
+            return false;
+        }
+        if (CatConfig.DEFAULT_TAIL_TEXT.equals(tail)) {
+            return CAT_TAIL_RE.matcher(text).find();
+        }
+        return tail.equals(text.substring(Math.max(0, text.length() - tail.length())));
+    }
+
+    private static List<String> applyTail(List<String> sentences, String tailText) {
+        String tail = tailText == null || tailText.trim().isEmpty() ? CatConfig.DEFAULT_TAIL_TEXT : tailText.trim();
+        List<String> out = new ArrayList<>();
+        for (String sentence : sentences) {
+            Matcher m = END_PUNCT_RE.matcher(sentence);
+            if (m.find()) {
+                String body = sentence.substring(0, m.start());
+                if (!hasTail(body, tail)) {
+                    sentence = body + tail + sentence.substring(m.start());
+                }
+            } else if (!hasTail(sentence, tail)) {
+                sentence = sentence + tail;
+            }
+            out.add(sentence);
+        }
+        return out;
+    }
+
+    private static String[] parseEmoticons(String text) {
+        if (text == null) {
+            return new String[0];
+        }
+        List<String> list = new ArrayList<>();
+        for (String line : text.split("\n")) {
+            String s = line.trim();
+            if (!s.isEmpty()) {
+                list.add(s);
+            }
+        }
+        return list.toArray(new String[0]);
+    }
+
+    /** 仅应用文本替换规则，然后在每个句末追加自定义文字（规则模式禁用时使用）。 */
+    public static String appendTail(String text, String tailText) {
+        if (text == null || text.isEmpty()) {
+            return text == null ? "" : text;
+        }
+        return finish(text, tailText);
     }
 
     // ---- 辅助查询（供 UI 弹窗预选） ----

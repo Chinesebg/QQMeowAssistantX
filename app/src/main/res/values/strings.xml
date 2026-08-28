@@ -25,31 +25,26 @@
     <string name="label_attitude">态度</string>
     <string name="label_intensity">强度</string>
     <string name="tone_hint">态度决定猫娘性格（乖巧/傲娇/亲昵），强度决定改写程度（轻度/中度/重度）。规则、混合、AI 三引擎均遵循该规则。</string>
-    <string name="section_switch">功能开关喵</string>
-    <string name="switch_append_title">断句追加</string>
-    <string name="switch_append_desc">在句号、叹号等标点分句后追加文本</string>
-    <string name="switch_emoticon_title">句末颜文字</string>
-    <string name="switch_emoticon_desc">在消息末尾附加随机颜文字</string>
+    <string name="section_switch">规则模式自定义句末文字喵</string>
+    <string name="switch_append_title">自定义句末文字</string>
+    <string name="switch_append_desc">开启后规则模式（内置态度/强度改写）禁用，仅保留文本替换规则；AI 模式、混合模式仍可生效</string>
     <string name="hint_append_text">追加内容（默认：喵）</string>
-    <string name="hint_custom_emoticons">例如: (=^w^=) 等</string>
     <string name="section_rules">文本替换规则喵</string>
     <string name="preset_rules">一键填入预设（我=本喵 / 你=主人）</string>
     <string name="preset_exists">预设已存在了喵！</string>
     <string name="rule_hint">每行一条，按顺序应用。格式：原词=替换词（也支持 ＝ 全角等号 / →）\n例：我=本喵 / 你＝主人 / 也支持数字等任意文本</string>
-    <string name="section_emoticons">自定义颜文字喵</string>
-    <string name="emoticon_hint">每行一个颜文字，留空则使用内置库</string>
     <string name="btn_save">保存设置喵</string>
     <string name="btn_test">测试当前配置喵</string>
-    <string name="home_footer_hint">提示：处理模式/引擎/态度/强度即时生效；文本替换规则修改后请点击保存喵</string>
+    <string name="home_footer_hint">提示：处理模式/引擎/态度/强度即时生效；文本替换规则与自定义句末文字修改后请点击保存喵</string>
     <string name="toast_saved">设置已保存喵</string>
     <string name="toast_save_failed">保存失败www: </string>
-    <string name="toast_test_failed">测试失败qwq: </string>
     <string name="toast_cannot_open_settings">无法打开设置喵</string>
     <string name="toast_pink_theme">「汝将收梢于花开时 一如终结诞下起始」</string>
 
     <!-- 设置 -->
     <string name="settings_theme_color">主题颜色</string>
     <string name="settings_dark_mode">深色模式</string>
+    <string name="settings_ui_style">界面风格</string>
     <string name="settings_ai">AI 设置</string>
     <string name="ai_base_url">Base URL</string>
     <string name="ai_api_key">API Key</string>
@@ -83,8 +78,93 @@
     <string name="about_contribs">CONTRIBS</string>
     <string name="about_original_author_placeholder">原作者请尽快联系上游作者</string>
     <string name="about_contrib_do_not">己所不欲 勿施于人</string>
-    <string name="about_github_repo">https://github.com/Chinesebg/QQMeowAssistantX</string>
 
     <!-- 获取更新弹窗 -->
     <string name="updates_github_label">GitHub</string>
+
+    <!-- 使用声明与免责声明 -->
+    <string name="disclaimer_title">使用声明与免责声明</string>
+    <string name="disclaimer_message">欢迎使用「QQ喵喵助手X」喵！使用前请仔细阅读以下声明：\n\n【使用声明】\n1. 本项目完全依赖 Android「无障碍服务」实现文本改写，该权限本身风险较高。本项目仅在 QQ 输入框内读取并改写文本，不会上传或收集您的其他个人信息。\n2. 本项目新增的「联网权限」仅用于连接 AI 服务（AI / 混合模式）。\n<b>若您认为该应用索取的权限有可能侵犯您的隐私、损害您的合法权益，请勿使用本应用。</b>\n\n【免责声明】\n1. 本项目仅用于技术学习与交流，请在下载后24小时内将其删除。\n2.任何人不得将本应用用于倒卖、牟利以及其他任何违法违规用途。\n3. 本项目为逆向重建版本，如涉及原著作权人权益，请通过 GitHub Issues 联系协商处理。\n4. 使用本项目所产生的一切后果，均由使用者自行承担，开发者不承担任何责任。\n\n<b>点击「同意」即表示您已阅读并接受以上声明。</b></string>
+    <string name="disclaimer_agree">我已了解并同意</string>
+    <string name="disclaimer_disagree">不同意并退出</string>
+
+    <!-- 设置分类：其他 -->
+    <string name="settings_section_other">其他</string>
+    <string name="settings_disclaimer">免责声明</string>
+    <string name="settings_privacy">隐私权限</string>
+
+    <!-- 关于：参考项目 -->
+    <string name="about_referenced_projects">参考项目</string>
+    <string name="about_project_libchecker">LibChecker</string>
+    <string name="about_project_nyabox">NyaBox</string>
+    <string name="about_project_rikkahub">RikkaHub</string>
+
+    <!-- 隐私权限 -->
+    <string name="privacy_intro">本应用申请的全部权限及用途如下表所示。其中「无障碍服务权限」与「联网权限」为高风险权限。除下表所列外，本应用不申请任何其他权限。</string>
+    <string name="privacy_col_permission">权限</string>
+    <string name="privacy_col_purpose">用途</string>
+    <string name="privacy_perm_accessibility">无障碍服务权限</string>
+    <string name="privacy_perm_accessibility_full">android.permission.BIND_ACCESSIBILITY_SERVICE</string>
+    <string name="privacy_perm_accessibility_purpose">读取并修改 QQ 输入框文本，用于实现文本改写 / 替换功能。该权限风险较高，仅作用于 QQ 输入框。</string>
+    <string name="privacy_perm_internet">联网权限</string>
+    <string name="privacy_perm_internet_full">android.permission.INTERNET</string>
+    <string name="privacy_perm_internet_purpose">连接 AI 服务（仅在 AI / 混合模式下使用），用于调用大模型改写文本。</string>
+    <string name="privacy_perm_overlay">悬浮窗权限</string>
+    <string name="privacy_perm_overlay_full">android.permission.SYSTEM_ALERT_WINDOW</string>
+    <string name="privacy_perm_overlay_purpose">在部分场景显示悬浮提示 / 弹窗。</string>
+    <string name="privacy_perm_shizuku">Shizuku 权限</string>
+    <string name="privacy_perm_shizuku_full">moe.shizuku.manager.permission.API_V23</string>
+    <string name="privacy_perm_shizuku_purpose">与 Shizuku 服务通信（预留能力，当前版本未启用相关功能）。</string>
+    <string name="nav_home">首页</string>
+    <string name="nav_settings">设置</string>
+    <string name="tap_to_manage_service">点按管理无障碍服务</string>
+    <string name="replacement_rules_empty">暂无规则</string>
+    <string name="replacement_rules_count">%1$d 条规则，按顺序应用</string>
+    <string name="rule_editor_hint">每行一条：原文=替换文。也支持全角等号和 →，替换文可留空。</string>
+    <string name="section_preview">实时预览</string>
+    <string name="preview_input">输入一段文本</string>
+    <string name="preview_result">处理结果</string>
+    <string name="theme_mode">主题模式</string>
+    <string name="theme_mode_summary">选择跟随系统、浅色或深色</string>
+    <string name="theme_system">跟随系统</string>
+    <string name="theme_light">浅色</string>
+    <string name="theme_dark">深色</string>
+    <string name="settings_appearance">主题与界面</string>
+    <string name="monet_color">莫奈取色</string>
+    <string name="monet_color_summary">从系统壁纸提取主题色，默认关闭</string>
+    <string name="app_bar_blur">顶栏背景模糊</string>
+    <string name="app_bar_blur_summary">折叠顶栏实时采样并模糊页面内容</string>
+    <string name="floating_bottom_bar">悬浮底栏</string>
+    <string name="floating_bottom_bar_summary">使用独立悬浮的 MiuiX 分页栏</string>
+    <string name="liquid_glass">液态玻璃</string>
+    <string name="liquid_glass_summary">实时折射底栏后的内容，并加入色散、高光与拖拽镜片效果</string>
+    <string name="blur_unsupported_summary">需要 Android 13 或更高版本</string>
+    <string name="about">关于</string>
+    <string name="about_description">面向普通非密码输入框的本地文本改写工具。输入内容不联网、不落盘。</string>
+    <string name="current_maintainer">维护与重构</string>
+    <string name="current_maintainer_credit">Mazha0309</string>
+    <string name="development_collaboration">开发协作</string>
+    <string name="development_collaboration_credit">GPT5.6Sol</string>
+    <string name="third_party_licenses">第三方使用许可</string>
+    <string name="third_party_licenses_summary">查看开源组件、来源与许可证</string>
+    <string name="project_license">本项目许可证</string>
+    <string name="project_license_summary">GNU Affero General Public License v3.0；完整声明见源码中的 LICENSE 与 THIRD_PARTY_NOTICES.md。</string>
+    <string name="historical_source">历史来源</string>
+    <string name="historical_source_summary">本项目最初基于 QiCaiJie114514/QQMiaoAssistant 重构，原仓库现已删除；现由 Mazha0309 独立维护。</string>
+    <string name="version_summary">版本 %1$s</string>
+    <string name="back">返回</string>
+    <string name="edit_suffix_title">编辑追加内容</string>
+    <string name="edit_suffix_hint">例如：喵</string>
+    <string name="edit_rules_title">编辑替换规则</string>
+    <string name="cancel">取消</string>
+    <string name="save">保存</string>
+    <string name="switch_emoticon_title">规则模式自定义颜文字</string>
+    <string name="switch_emoticon_desc">开启后规则模式使用自定义颜文字库</string>
+    <string name="hint_custom_emoticons">自定义颜文字（每行一个）</string>
+    <string name="custom_emoticons_builtin">使用内置颜文字库</string>
+    <string name="custom_emoticons_count">%1$d 个自定义颜文字</string>
+    <string name="edit_emoticons_title">编辑颜文字库</string>
+    <string name="edit_emoticons_hint">每行一个；全部留空恢复内置库。</string>
+    <string name="maintainers">维护者</string>
 </resources>
+

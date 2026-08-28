@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
-    <uses-sdk
-        android:minSdkVersion="23"
-        android:targetSdkVersion="35" />
+    <!-- MiuiX blur self-guards its API 33 shader path; this is the same narrow override used by KernelSU Manager. -->
+    <uses-sdk tools:overrideLibrary="top.yukonga.miuix.kmp.blur" />
 
     <!-- 无障碍服务权限（系统强制要求，由 BIND_ACCESSIBILITY_SERVICE 保护） -->
     <uses-permission android:name="android.permission.BIND_ACCESSIBILITY_SERVICE" />
@@ -36,6 +36,15 @@
         <activity
             android:name=".CatGirlActivity"
             android:exported="false" />
+
+        <activity
+            android:name=".PrivacyActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".MiuixComposeActivity"
+            android:exported="false" />
+
 
         <service
             android:name=".QQAccessibilityService"

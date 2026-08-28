@@ -69,6 +69,10 @@ public class MainActivity extends AppCompatActivity {
     private MaterialSwitch rbEngineRule;
     private MaterialSwitch rbEngineHybrid;
     private MaterialSwitch rbEngineAi;
+    private MaterialSwitch swCustomTail;
+    private TextInputEditText etTailText;
+    private MaterialSwitch swCustomEmoticon;
+    private TextInputEditText etCustomEmoticons;
     private TextInputEditText etRules;
     private TextView statusText;
     private MaterialButton toggleButton;
@@ -120,6 +124,11 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         setTheme(ThemeManager.themeRes(this));
         super.onCreate(savedInstanceState);
+        if (UiConfig.uiStyle(this).equals(UiConfig.UI_MIUI)) {
+            startActivity(new Intent(this, MiuixComposeActivity.class));
+            finish();
+            return;
+        }
         try {
             this.config = CatConfig.load(this);
         } catch (Exception e) {
@@ -136,6 +145,7 @@ public class MainActivity extends AppCompatActivity {
         setupEdgeToEdge();
         setContentView(buildRoot());
         applyBackground();
+        maybeShowFirstRunDisclaimer();
     }
 
     // ---------------------------------------------------------------- 布局
@@ -346,6 +356,42 @@ public class MainActivity extends AppCompatActivity {
         root.addView(this.rbEngineAi, new LinearLayout.LayoutParams(-1, -2));
         addHint(root, R.string.engine_hint);
 
+        // 规则模式自定义句末文字
+        addSectionTitle(root, R.string.section_switch);
+        this.swCustomTail = new MaterialSwitch(this);
+        this.swCustomTail.setText(R.string.switch_append_title);
+        this.swCustomTail.setChecked(this.config.tailEnabled);
+        this.swCustomTail.setOnCheckedChangeListener((buttonView, isChecked) -> saveSwitchSettings());
+        root.addView(this.swCustomTail, new LinearLayout.LayoutParams(-1, -2));
+
+        this.etTailText = new TextInputEditText(this);
+        this.etTailText.setInputType(InputType.TYPE_CLASS_TEXT);
+        this.etTailText.setSingleLine(true);
+        this.etTailText.setText(this.config.tailText != null ? this.config.tailText : CatConfig.DEFAULT_TAIL_TEXT);
+        root.addView(wrapTextInput(this.etTailText, getString(R.string.hint_append_text)),
+                new LinearLayout.LayoutParams(-1, -2));
+        addHint(root, R.string.switch_append_desc);
+
+        // 规则模式自定义颜文字
+        this.swCustomEmoticon = new MaterialSwitch(this);
+        this.swCustomEmoticon.setText(R.string.switch_emoticon_title);
+        this.swCustomEmoticon.setChecked(this.config.emoticonEnabled);
+        this.swCustomEmoticon.setOnCheckedChangeListener((buttonView, isChecked) -> saveSwitchSettings());
+        root.addView(this.swCustomEmoticon, new LinearLayout.LayoutParams(-1, -2));
+
+        this.etCustomEmoticons = new TextInputEditText(this);
+        this.etCustomEmoticons.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+        this.etCustomEmoticons.setMinLines(5);
+        this.etCustomEmoticons.setGravity(Gravity.TOP | Gravity.START);
+        String customEmoticons = this.config.customEmoticons;
+        if (customEmoticons == null) {
+            customEmoticons = "";
+        }
+        this.etCustomEmoticons.setText(customEmoticons);
+        root.addView(wrapTextInput(this.etCustomEmoticons, getString(R.string.hint_custom_emoticons)),
+                new LinearLayout.LayoutParams(-1, -2));
+        addHint(root, R.string.switch_emoticon_desc);
+
         // 语气（态度 × 强度，参照 nyabox）
         addSectionTitle(root, R.string.section_tone);
         this.attitudeValue = addValueRow(root, getString(R.string.label_attitude),
@@ -396,6 +442,7 @@ public class MainActivity extends AppCompatActivity {
         root.addView(testBtn, testLp);
 
         addFooterHint(root, R.string.home_footer_hint);
+        applyCustomRuleModeLock();
 
         scroll.addView(root, new LinearLayout.LayoutParams(-1, -2));
         return scroll;
@@ -415,6 +462,8 @@ public class MainActivity extends AppCompatActivity {
                 v -> showThemeDialog()));
         personalization.add(makeSettingsRow(R.drawable.ic_dark_mode, getString(R.string.settings_dark_mode), false,
                 v -> showDarkModeDialog()));
+        personalization.add(makeSettingsRow(R.drawable.ic_home, getString(R.string.settings_ui_style), true,
+                v -> showUiStyleDialog()));
         personalization.add(makeSettingsRow(R.drawable.ic_image, getString(R.string.settings_bg_image), false,
                 v -> openImagePicker()));
         personalization.add(makeSettingsRow(R.drawable.ic_clear, getString(R.string.settings_bg_clear), false,
@@ -462,6 +511,14 @@ public class MainActivity extends AppCompatActivity {
         ai.add(makeSettingsRow(R.drawable.ic_ai, getString(R.string.settings_ai), false,
                 v -> showAiSettingsDialog()));
         addSettingsGroup(root, R.string.settings_section_ai, ai);
+
+        // 其他：免责声明 / 隐私权限
+        List<View> other = new ArrayList<>();
+        other.add(makeSettingsRow(R.drawable.ic_info, getString(R.string.settings_disclaimer), true,
+                v -> showDisclaimerDialog()));
+        other.add(makeSettingsRow(R.drawable.ic_person, getString(R.string.settings_privacy), true,
+                v -> startActivity(new Intent(MainActivity.this, PrivacyActivity.class))));
+        addSettingsGroup(root, R.string.settings_section_other, other);
 
         // 关于
         List<View> about = new ArrayList<>();
@@ -607,6 +664,7 @@ public class MainActivity extends AppCompatActivity {
 
         ImageView icon = new ImageView(this);
         icon.setImageResource(iconRes);
+        icon.setColorFilter(colorAttr(com.google.android.material.R.attr.colorPrimary));
         row.addView(icon, new LinearLayout.LayoutParams(dp(24), dp(24)));
 
         TextView titleTv = new TextView(this);
@@ -711,7 +769,9 @@ public class MainActivity extends AppCompatActivity {
             card.setCardElevation(0);
             card.setStrokeWidth(0);
             card.setShapeAppearanceModel(sam);
-            card.setCardBackgroundColor(colorAttr(com.google.android.material.R.attr.colorSurfaceContainer));
+            // 半透明主题色容器：既随主题色变化，也不再完全遮挡自定义背景图片。
+            card.setCardBackgroundColor(withAlpha(
+                    colorAttr(com.google.android.material.R.attr.colorSurfaceVariant), 0xCC));
             card.addView(row, new LinearLayout.LayoutParams(-1, -2));
 
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
@@ -732,6 +792,7 @@ public class MainActivity extends AppCompatActivity {
 
         ImageView icon = new ImageView(this);
         icon.setImageResource(iconRes);
+        icon.setColorFilter(colorAttr(com.google.android.material.R.attr.colorPrimary));
         row.addView(icon, new LinearLayout.LayoutParams(dp(24), dp(24)));
 
         LinearLayout textBox = new LinearLayout(this);
@@ -943,6 +1004,26 @@ public class MainActivity extends AppCompatActivity {
         showWithBlur(dialog);
     }
 
+    private void showUiStyleDialog() {
+        int checked = UiConfig.uiStyleIndex(this);
+        androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.settings_ui_style)
+                .setSingleChoiceItems(UiConfig.UI_STYLE_NAMES, checked, (d, which) -> {
+                    String style = UiConfig.UI_STYLE_VALUES[which];
+                    UiConfig.setUiStyle(this, style);
+                    d.dismiss();
+                    if (UiConfig.UI_MIUI.equals(style)) {
+                        startActivity(new Intent(MainActivity.this, MiuixComposeActivity.class));
+                        finish();
+                    } else {
+                        recreate();
+                    }
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .create();
+        showWithBlur(dialog);
+    }
+
     private void showAttitudeDialog() {
         int checked = RuleEngine.attitudeIndexOf(this.selectedAttitude);
         androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(this)
@@ -1032,6 +1113,34 @@ public class MainActivity extends AppCompatActivity {
                     Toast.makeText(this, R.string.toast_saved, Toast.LENGTH_SHORT).show();
                 })
                 .setNegativeButton(android.R.string.cancel, null)
+                .create();
+        showWithBlur(dialog);
+    }
+
+    // ---------------------------------------------------------------- 使用声明 / 免责声明
+
+    /** 首次启动（或升级后）弹出使用声明与免责声明，用户同意后记录版本。 */
+    private void maybeShowFirstRunDisclaimer() {
+        if (!PrivacyManager.shouldShowDisclaimer(this)) {
+            return;
+        }
+        androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.disclaimer_title)
+                .setMessage(R.string.disclaimer_message)
+                .setPositiveButton(R.string.disclaimer_agree, (d, which) ->
+                        PrivacyManager.markAccepted(this))
+                .setNegativeButton(R.string.disclaimer_disagree, (d, which) -> finish())
+                .setCancelable(false)
+                .create();
+        showWithBlur(dialog);
+    }
+
+    /** 「设置 → 其他 → 免责声明」入口：仅展示声明内容。 */
+    private void showDisclaimerDialog() {
+        androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.disclaimer_title)
+                .setMessage(R.string.disclaimer_message)
+                .setPositiveButton(android.R.string.ok, null)
                 .create();
         showWithBlur(dialog);
     }
@@ -1223,7 +1332,13 @@ public class MainActivity extends AppCompatActivity {
                 : CatConfig.MODE_ENGINE_RULE;
         c.attitude = this.selectedAttitude;
         c.intensity = this.selectedIntensity;
-
+        c.tailEnabled = this.swCustomTail != null && this.swCustomTail.isChecked();
+        String tail = this.etTailText == null || this.etTailText.getText() == null
+                ? CatConfig.DEFAULT_TAIL_TEXT : this.etTailText.getText().toString().trim();
+        c.tailText = tail.isEmpty() ? CatConfig.DEFAULT_TAIL_TEXT : tail;
+        c.emoticonEnabled = this.swCustomEmoticon != null && this.swCustomEmoticon.isChecked();
+        c.customEmoticons = this.etCustomEmoticons == null || this.etCustomEmoticons.getText() == null
+                ? "" : this.etCustomEmoticons.getText().toString();
         ArrayList<CatConfig.Rule> rules = new ArrayList<>();
         String rulesText = this.etRules.getText() == null ? "" : this.etRules.getText().toString();
         for (String line : rulesText.split("\n")) {
@@ -1246,10 +1361,32 @@ public class MainActivity extends AppCompatActivity {
                     : CatConfig.MODE_ENGINE_RULE;
             this.config.attitude = this.selectedAttitude;
             this.config.intensity = this.selectedIntensity;
+            this.config.tailEnabled = this.swCustomTail != null && this.swCustomTail.isChecked();
+            if (this.etTailText != null && this.etTailText.getText() != null) {
+                String tail = this.etTailText.getText().toString().trim();
+                this.config.tailText = tail.isEmpty() ? CatConfig.DEFAULT_TAIL_TEXT : tail;
+            }
+            this.config.emoticonEnabled = this.swCustomEmoticon != null && this.swCustomEmoticon.isChecked();
+            if (this.etCustomEmoticons != null && this.etCustomEmoticons.getText() != null) {
+                this.config.customEmoticons = this.etCustomEmoticons.getText().toString();
+            }
+            applyCustomRuleModeLock();
             this.config.save(this);
         } catch (Exception ignored) {
             // 开关交互失败时静默，避免打断操作
         }
+    }
+
+    /** 规则模式自定义开关开启时，强制锁定处理引擎为「规则」。 */
+    private void applyCustomRuleModeLock() {
+        if (this.swCustomTail == null || this.swCustomEmoticon == null
+                || this.rbEngineRule == null || this.rbEngineHybrid == null || this.rbEngineAi == null) {
+            return;
+        }
+        boolean customOn = this.swCustomTail.isChecked() || this.swCustomEmoticon.isChecked();
+        this.rbEngineRule.setEnabled(!customOn);
+        this.rbEngineHybrid.setEnabled(true);
+        this.rbEngineAi.setEnabled(true);
     }
 
     /** 保存按钮：替换规则（一并保存完整配置）。 */
@@ -1269,7 +1406,9 @@ public class MainActivity extends AppCompatActivity {
         String engine = testCfg.engineMode != null ? testCfg.engineMode : CatConfig.MODE_ENGINE_RULE;
         if (CatConfig.MODE_ENGINE_RULE.equals(engine)) {
             showTestResult(testCfg,
-                    RuleEngine.convert(sample, testCfg.intensity, testCfg.attitude, testCfg.rules, true), sample);
+                    RuleEngine.convert(sample, testCfg.intensity, testCfg.attitude, testCfg.rules, true,
+                            testCfg.tailEnabled, testCfg.tailText,
+                            testCfg.emoticonEnabled, testCfg.customEmoticons), sample);
             return;
         }
         // AI / 混合：异步
@@ -1291,10 +1430,11 @@ public class MainActivity extends AppCompatActivity {
         String msg = "处理引擎：" + engineLabel(testCfg)
                 + "\n态度：" + attitudeName(testCfg.attitude)
                 + "\n强度：" + intensityName(testCfg.intensity)
+                + "\n自定义句末：" + (testCfg.tailEnabled ? testCfg.tailText : "关")
                 + "\n替换规则：" + testCfg.rules.size() + " 条"
                 + "\n\n原始：\n" + sample
                 + "\n\n处理后：\n" + processed;
-        androidx.appcompat.app.AlertDialog d = new androidx.appcompat.app.AlertDialog.Builder(this)
+        androidx.appcompat.app.AlertDialog d = new MaterialAlertDialogBuilder(this)
                 .setTitle("预览").setMessage(msg)
                 .setPositiveButton("好的", null).create();
         showWithBlur(d);
@@ -1307,6 +1447,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // ---------------------------------------------------------------- 工具
+
+    private int withAlpha(int color, int alpha) {
+        return (color & 0x00FFFFFF) | (alpha << 24);
+    }
 
     private int dp(int v) {
         return (int) (v * getResources().getDisplayMetrics().density + 0.5f);

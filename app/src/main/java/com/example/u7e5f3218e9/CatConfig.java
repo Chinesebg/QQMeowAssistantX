@@ -11,6 +11,10 @@ public class CatConfig {
     public static final String KEY_ENGINE_MODE = "engine_mode";
     public static final String KEY_ATTITUDE = "attitude";
     public static final String KEY_INTENSITY = "intensity";
+    public static final String KEY_TAIL_ENABLED = "tail_enabled";
+    public static final String KEY_TAIL_TEXT = "tail_text";
+    public static final String KEY_EMOTICON_ENABLED = "emoticon_enabled";
+    public static final String KEY_CUSTOM_EMOTICONS = "custom_emoticons";
 
     public static final String MODE_PUNCTUATION = "punctuation";
     public static final String MODE_REALTIME = "realtime";
@@ -21,6 +25,8 @@ public class CatConfig {
     /** 默认态度 / 强度（与 RuleEngine 常量保持一致） */
     public static final String DEFAULT_ATTITUDE = RuleEngine.ATTITUDE_OBEDIENT;
     public static final String DEFAULT_INTENSITY = RuleEngine.INTENSITY_MEDIUM;
+    /** 默认句末文字 */
+    public static final String DEFAULT_TAIL_TEXT = "喵";
 
     private static final String PREFS_NAME = "cat_config";
 
@@ -43,6 +49,10 @@ public class CatConfig {
     public String engineMode = MODE_ENGINE_RULE;
     public String attitude = DEFAULT_ATTITUDE;
     public String intensity = DEFAULT_INTENSITY;
+    public boolean tailEnabled = false;
+    public String tailText = DEFAULT_TAIL_TEXT;
+    public boolean emoticonEnabled = false;
+    public String customEmoticons = "";
     public List<Rule> rules = new ArrayList<>();
 
     public static Rule parseRule(String line) {
@@ -95,6 +105,11 @@ public class CatConfig {
         cfg.engineMode = sp.getString(KEY_ENGINE_MODE, MODE_ENGINE_RULE);
         cfg.attitude = sp.getString(KEY_ATTITUDE, DEFAULT_ATTITUDE);
         cfg.intensity = sp.getString(KEY_INTENSITY, DEFAULT_INTENSITY);
+        cfg.tailEnabled = sp.getBoolean(KEY_TAIL_ENABLED, false);
+        String tail = sp.getString(KEY_TAIL_TEXT, DEFAULT_TAIL_TEXT);
+        cfg.tailText = (tail == null || tail.trim().isEmpty()) ? DEFAULT_TAIL_TEXT : tail;
+        cfg.emoticonEnabled = sp.getBoolean(KEY_EMOTICON_ENABLED, false);
+        cfg.customEmoticons = sp.getString(KEY_CUSTOM_EMOTICONS, "");
 
         String rulesStr = sp.getString(KEY_RULES, "");
         if (rulesStr != null && !rulesStr.trim().isEmpty()) {
@@ -117,6 +132,11 @@ public class CatConfig {
         ed.putString(KEY_ENGINE_MODE, this.engineMode == null ? MODE_ENGINE_RULE : this.engineMode);
         ed.putString(KEY_ATTITUDE, this.attitude == null ? DEFAULT_ATTITUDE : this.attitude);
         ed.putString(KEY_INTENSITY, this.intensity == null ? DEFAULT_INTENSITY : this.intensity);
+        ed.putBoolean(KEY_TAIL_ENABLED, this.tailEnabled);
+        ed.putString(KEY_TAIL_TEXT, (this.tailText == null || this.tailText.trim().isEmpty())
+                ? DEFAULT_TAIL_TEXT : this.tailText.trim());
+        ed.putBoolean(KEY_EMOTICON_ENABLED, this.emoticonEnabled);
+        ed.putString(KEY_CUSTOM_EMOTICONS, this.customEmoticons == null ? "" : this.customEmoticons);
         ed.putString(KEY_RULES, rulesToString(this.rules));
         ed.apply();
     }

@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Outline;
+import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
@@ -92,6 +93,15 @@ public class AboutActivity extends AppCompatActivity {
         addGroupButton(content, getString(R.string.about_devs), v -> showDevelopersSheet());
         addGroupButton(content, getString(R.string.about_contribs), v -> showContributorsSheet());
 
+        // 参考项目（开源致谢，点击跳转 GitHub）
+        addAboutSectionTitle(content, R.string.about_referenced_projects);
+        addProjectRow(content, getString(R.string.about_project_libchecker),
+                "https://github.com/LibChecker/LibChecker");
+        addProjectRow(content, getString(R.string.about_project_nyabox),
+                "https://github.com/yzsyzdy/nyabox");
+        addProjectRow(content, getString(R.string.about_project_rikkahub),
+                "https://github.com/rikkahub/rikkahub");
+
         scroll.addView(content, new LinearLayout.LayoutParams(-1, -2));
         root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1.0f));
         return root;
@@ -128,6 +138,61 @@ public class AboutActivity extends AppCompatActivity {
         card.addView(row, new LinearLayout.LayoutParams(-1, -2));
         LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(-1, -2);
         cardLp.setMargins(0, dp(16), 0, dp(8));
+        parent.addView(card, cardLp);
+    }
+
+    /** 分区标题（左对齐，主色加粗 titleSmall）。 */
+    private void addAboutSectionTitle(LinearLayout parent, int textRes) {
+        TextView tv = new TextView(this);
+        tv.setText(textRes);
+        TextViewCompat.setTextAppearance(tv, com.google.android.material.R.style.TextAppearance_Material3_TitleSmall);
+        tv.setTypeface(Typeface.DEFAULT_BOLD);
+        tv.setTextColor(colorAttr(com.google.android.material.R.attr.colorPrimary));
+        tv.setGravity(Gravity.START);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+        lp.setMargins(0, dp(24), 0, dp(4));
+        parent.addView(tv, lp);
+    }
+
+    /** 参考项目行：GitHub 图标 + 名称 + 箭头，点击跳转对应仓库。 */
+    private void addProjectRow(LinearLayout parent, String name, String url) {
+        MaterialCardView card = new MaterialCardView(this);
+        card.setCardElevation(0);
+        card.setStrokeWidth(1);
+        card.setStrokeColor(colorAttr(com.google.android.material.R.attr.colorOutlineVariant));
+        card.setRadius(dp(16));
+        card.setClickable(true);
+        card.setFocusable(true);
+        card.setOnClickListener(v -> openUrl(url));
+
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(16), dp(14), dp(16), dp(14));
+
+        ImageView icon = new ImageView(this);
+        icon.setImageResource(R.drawable.ic_github);
+        icon.setColorFilter(colorAttr(com.google.android.material.R.attr.colorOnSurfaceVariant));
+        row.addView(icon, new LinearLayout.LayoutParams(dp(22), dp(22)));
+
+        TextView nameTv = new TextView(this);
+        nameTv.setText(name);
+        TextViewCompat.setTextAppearance(nameTv, com.google.android.material.R.style.TextAppearance_Material3_TitleMedium);
+        nameTv.setTextColor(colorAttr(com.google.android.material.R.attr.colorOnSurface));
+        LinearLayout.LayoutParams nLp = new LinearLayout.LayoutParams(0, -2, 1.0f);
+        nLp.setMarginStart(dp(16));
+        row.addView(nameTv, nLp);
+
+        TextView chev = new TextView(this);
+        chev.setText("›");
+        chev.setTextSize(24);
+        chev.setTextColor(colorAttr(com.google.android.material.R.attr.colorOnSurfaceVariant));
+        chev.setGravity(Gravity.CENTER);
+        row.addView(chev, new LinearLayout.LayoutParams(-2, -2));
+
+        card.addView(row, new LinearLayout.LayoutParams(-1, -2));
+        LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(-1, -2);
+        cardLp.setMargins(0, dp(8), 0, dp(8));
         parent.addView(card, cardLp);
     }
 

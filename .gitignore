@@ -12,3 +12,6 @@ captures/
 
 # 系统
 .DS_Store
+*.jks
+*.keystore
+keystore/
